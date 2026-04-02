@@ -1,0 +1,4 @@
+conversion_date,deal_id_pipe,customer_key,customer_name,acquisition_channel,sale_value_brl,customer_status,first_sale_date,is_first_sale,source_system,notes
+2026-03-01,27503,cli_0001,Ana Silva,Google,12500.00,NEW,2026-03-01,TRUE,MONDE,primeira compra
+2026-03-03,27410,cli_0002,Carlos Souza,Redes Sociais - Facebook ou Instagram,18400.00,NEW,2026-03-03,TRUE,MONDE,cliente novo vindo de paid social
+2026-03-05,27007,cli_0003,Mariana Lima,Espontaneamente - Cliente VPM Fez Contato,1125.12,EXISTING,2025-08-11,FALSE,MONDE,recompra

@@ -1,0 +1,239 @@
+import type {
+  ChannelSales,
+  MonthlyRevenue,
+  PipedriveDealRecord,
+  PipedriveStore,
+} from './data-store';
+import type { DateRange } from './date-range';
+
+const MONTH_PT: Record<number, string> = {
+  1: 'janeiro',
+  2: 'fevereiro',
+  3: 'marco',
+  4: 'abril',
+  5: 'maio',
+  6: 'junho',
+  7: 'julho',
+  8: 'agosto',
+  9: 'setembro',
+  10: 'outubro',
+  11: 'novembro',
+  12: 'dezembro',
+};
+
+const MONTH_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+export interface PipedriveMetrics {
+  totalDeals: number;
+  totalRevenue: number;
+  totalTransacoes: number;
+  ticketMedio: number;
+  totalLeads: number;
+  totalLost: number;
+  totalWon: number;
+  withMondeBilling: number;
+  period: string | null;
+  channels: ChannelSales[];
+  monthly: MonthlyRevenue[];
+  pipelineDeals: PipedriveDealRecord[];
+  mondeDeals: PipedriveDealRecord[];
+}
+
+export function getPipedriveMetricsForRange(
+  data: PipedriveStore | null,
+  range?: DateRange,
+): PipedriveMetrics | null {
+  if (!data) {
+    return null;
+  }
+
+  const pipelineDeals = Array.isArray(data.pipelineDeals) ? data.pipelineDeals : [];
+  const mondeDeals = Array.isArray(data.mondeDeals) ? data.mondeDeals : [];
+
+  if (pipelineDeals.length === 0 && mondeDeals.length === 0) {
+    return {
+      totalDeals: data.totalDeals || 0,
+      totalRevenue: data.totalRevenue || 0,
+      totalTransacoes: data.totalTransacoes || 0,
+      ticketMedio: data.ticketMedio || 0,
+      totalLeads: data.totalLeads || 0,
+      totalLost: data.totalLost || 0,
+      totalWon: data.totalWon || 0,
+      withMondeBilling: data.withMondeBilling || data.totalDeals || 0,
+      period: data.period || null,
+      channels: data.channels || [],
+      monthly: data.monthly || [],
+      pipelineDeals: [],
+      mondeDeals: [],
+    };
+  }
+
+  const filteredPipelineDeals = pipelineDeals.filter((deal) => isDealInRange(deal, range));
+  const filteredMondeDeals = mondeDeals.filter((deal) => isDealInRange(deal, range));
+  const leadSourceDeals = filteredPipelineDeals.length > 0
+    ? filteredPipelineDeals
+    : filteredMondeDeals.map((deal) => ({
+      ...deal,
+      receita: 0,
+      hasMondeBilling: false,
+    }));
+
+  const channelMap = new Map<string, {
+    canal: string;
+    leads: number;
+    vendas: number;
+    receita: number;
+  }>();
+  const monthMap = new Map<string, {
+    year: number;
+    month: string;
+    receita: number;
+    deals: number;
+  }>();
+
+  let totalRevenue = 0;
+  let totalLost = 0;
+  let totalWon = 0;
+  let minDate: string | null = null;
+  let maxDate: string | null = null;
+
+  for (const deal of leadSourceDeals) {
+    const entry = channelMap.get(deal.canal) ?? { canal: deal.canal, leads: 0, vendas: 0, receita: 0 };
+    entry.leads += 1;
+    channelMap.set(deal.canal, entry);
+
+    if (isWonStatus(deal.status)) {
+      totalWon += 1;
+    } else if (isLostStatus(deal.status)) {
+      totalLost += 1;
+    }
+
+    if (deal.createdDate) {
+      if (!minDate || deal.createdDate < minDate) {
+        minDate = deal.createdDate;
+      }
+      if (!maxDate || deal.createdDate > maxDate) {
+        maxDate = deal.createdDate;
+      }
+    }
+  }
+
+  for (const deal of filteredMondeDeals) {
+    const entry = channelMap.get(deal.canal) ?? { canal: deal.canal, leads: 0, vendas: 0, receita: 0 };
+    entry.vendas += 1;
+    entry.receita += deal.receita || 0;
+    channelMap.set(deal.canal, entry);
+
+    totalRevenue += deal.receita || 0;
+
+    if (deal.createdDate) {
+      if (!minDate || deal.createdDate < minDate) {
+        minDate = deal.createdDate;
+      }
+      if (!maxDate || deal.createdDate > maxDate) {
+        maxDate = deal.createdDate;
+      }
+
+      const year = Number.parseInt(deal.createdDate.slice(0, 4), 10);
+      const monthNum = Number.parseInt(deal.createdDate.slice(5, 7), 10);
+      const monthKey = `${year}-${String(monthNum).padStart(2, '0')}`;
+      const monthEntry = monthMap.get(monthKey) ?? {
+        year,
+        month: MONTH_PT[monthNum] ?? `mes-${monthNum}`,
+        receita: 0,
+        deals: 0,
+      };
+      monthEntry.receita += deal.receita || 0;
+      monthEntry.deals += 1;
+      monthMap.set(monthKey, monthEntry);
+    }
+  }
+
+  if (filteredPipelineDeals.length === 0 && filteredMondeDeals.length > 0) {
+    totalWon = filteredMondeDeals.length;
+  }
+
+  const channels = Array.from(channelMap.values())
+    .map((entry) => ({
+      canal: entry.canal,
+      vendas: entry.vendas,
+      receita: round2(entry.receita),
+      ticket: entry.vendas > 0 ? round2(entry.receita / entry.vendas) : 0,
+      leads: entry.leads,
+    }))
+    .sort((a, b) => {
+      if (b.receita !== a.receita) {
+        return b.receita - a.receita;
+      }
+      if ((b.vendas || 0) !== (a.vendas || 0)) {
+        return (b.vendas || 0) - (a.vendas || 0);
+      }
+      return (b.leads || 0) - (a.leads || 0);
+    });
+
+  const monthly = Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([monthKey, entry]) => ({
+      year: entry.year,
+      month: entry.month,
+      monthKey,
+      receita: round2(entry.receita),
+      deals: entry.deals,
+    }));
+
+  const totalDeals = filteredMondeDeals.length;
+
+  return {
+    totalDeals,
+    totalRevenue: round2(totalRevenue),
+    totalTransacoes: totalDeals,
+    ticketMedio: totalDeals > 0 ? round2(totalRevenue / totalDeals) : 0,
+    totalLeads: leadSourceDeals.length,
+    totalLost,
+    totalWon,
+    withMondeBilling: totalDeals,
+    period: buildPeriodLabel(minDate, maxDate) || data.period || null,
+    channels,
+    monthly,
+    pipelineDeals: filteredPipelineDeals,
+    mondeDeals: filteredMondeDeals,
+  };
+}
+
+function isDealInRange(deal: PipedriveDealRecord, range?: DateRange): boolean {
+  if (!range) {
+    return true;
+  }
+
+  if (!deal.createdDate) {
+    return false;
+  }
+
+  return deal.createdDate >= range.start && deal.createdDate <= range.end;
+}
+
+function isWonStatus(status: string): boolean {
+  return /ganho|won/.test(status);
+}
+
+function isLostStatus(status: string): boolean {
+  return /perdido|lost/.test(status);
+}
+
+function buildPeriodLabel(minDate: string | null, maxDate: string | null): string | null {
+  if (!minDate || !maxDate) {
+    return null;
+  }
+
+  const min = new Date(`${minDate}T00:00:00`);
+  const max = new Date(`${maxDate}T00:00:00`);
+  if (Number.isNaN(min.getTime()) || Number.isNaN(max.getTime())) {
+    return null;
+  }
+
+  return `${MONTH_ABBR[min.getMonth()]}/${min.getFullYear()} a ${MONTH_ABBR[max.getMonth()]}/${max.getFullYear()}`;
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}

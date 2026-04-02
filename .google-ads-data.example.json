@@ -1,0 +1,61 @@
+{
+  "updatedAt": "2026-03-11T15:49:38.147Z",
+  "customerId": "169-854-9372",
+  "accountName": "Vai Pro Mundo",
+  "totalSpend": 12500.00,
+  "totalImpressions": 125000,
+  "totalClicks": 3800,
+  "totalConversions": 542,
+  "months": [
+    {
+      "month": "janeiro",
+      "year": 2026,
+      "spend": 7500.00,
+      "impressions": 75000,
+      "clicks": 2200,
+      "conversions": 307
+    },
+    {
+      "month": "fevereiro",
+      "year": 2026,
+      "spend": 5000.00,
+      "impressions": 50000,
+      "clicks": 1600,
+      "conversions": 235
+    }
+  ],
+  "campaigns": [
+    {
+      "campaignId": "campaign_001",
+      "campaignName": "Viagens Premium - Jan 2026",
+      "spend": 3750.00,
+      "impressions": 45000,
+      "clicks": 1200,
+      "conversions": 150
+    },
+    {
+      "campaignId": "campaign_002",
+      "campaignName": "Promoções Férias - Jan 2026",
+      "spend": 3750.00,
+      "impressions": 30000,
+      "clicks": 1000,
+      "conversions": 157
+    },
+    {
+      "campaignId": "campaign_003",
+      "campaignName": "Viagens Premium - Fev 2026",
+      "spend": 2500.00,
+      "impressions": 30000,
+      "clicks": 800,
+      "conversions": 120
+    },
+    {
+      "campaignId": "campaign_004",
+      "campaignName": "Promoções Férias - Fev 2026",
+      "spend": 2500.00,
+      "impressions": 20000,
+      "clicks": 800,
+      "conversions": 115
+    }
+  ]
+}
