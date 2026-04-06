@@ -32,6 +32,7 @@ export interface PipedriveMetrics {
   totalLost: number;
   totalWon: number;
   withMondeBilling: number;
+  avgDaysToWin: number | null;
   period: string | null;
   channels: ChannelSales[];
   monthly: MonthlyRevenue[];
@@ -60,6 +61,7 @@ export function getPipedriveMetricsForRange(
       totalLost: data.totalLost || 0,
       totalWon: data.totalWon || 0,
       withMondeBilling: data.withMondeBilling || data.totalDeals || 0,
+      avgDaysToWin: null,
       period: data.period || null,
       channels: data.channels || [],
       monthly: data.monthly || [],
@@ -183,6 +185,24 @@ export function getPipedriveMetricsForRange(
 
   const totalDeals = filteredMondeDeals.length;
 
+  // Tempo médio de ganho: diferença entre data de venda (Monde) e data de criação no Pipe
+  // Usa TODOS os pipelineDeals (sem filtro de data) para encontrar a data de entrada,
+  // pois o deal pode ter sido criado no Pipe em um período anterior ao filtro selecionado.
+  const allPipelineById = new Map(pipelineDeals.map((d) => [d.id, d]));
+  const winDaysArr: number[] = [];
+  for (const mondeDeal of filteredMondeDeals) {
+    const pipeDeal = allPipelineById.get(mondeDeal.id);
+    if (!pipeDeal?.createdDate || !mondeDeal.createdDate) continue;
+    const days = Math.round(
+      (new Date(`${mondeDeal.createdDate}T00:00:00`).getTime() - new Date(`${pipeDeal.createdDate}T00:00:00`).getTime())
+      / (1000 * 60 * 60 * 24),
+    );
+    if (days >= 0) winDaysArr.push(days);
+  }
+  const avgDaysToWin = winDaysArr.length > 0
+    ? Math.round(winDaysArr.reduce((sum, v) => sum + v, 0) / winDaysArr.length)
+    : null;
+
   return {
     totalDeals,
     totalRevenue: round2(totalRevenue),
@@ -192,6 +212,7 @@ export function getPipedriveMetricsForRange(
     totalLost,
     totalWon,
     withMondeBilling: totalDeals,
+    avgDaysToWin,
     period: buildPeriodLabel(minDate, maxDate) || data.period || null,
     channels,
     monthly,

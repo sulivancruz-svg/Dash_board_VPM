@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  BarChart3, Database, DollarSign, Loader, ShoppingCart,
+  BarChart3, Clock, Database, DollarSign, Loader, ShoppingCart,
   Target, TrendingUp, Upload, Users, Zap,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -110,6 +110,7 @@ interface OverviewData {
     roi: number | null;
     cpl: number | null;
     conversionRate: number | null;
+    avgDaysToWin: number | null;
   };
 }
 
@@ -251,314 +252,185 @@ export default function OverviewPage() {
         </div>
       ) : (
         <>
-          {/* ── KPIs principais ── */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          {/* ── 3 Cards Estratégicos ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-            {/* Invest. Meta separado */}
-            <KpiBox
-              label="Invest. Meta Ads"
-              value={data && data.kpis.investimentoMeta > 0 ? fmt(data.kpis.investimentoMeta, 'currency') : '—'}
-              sub={data?.meta.connected ? `${fmt(data.meta.impressions)} impressoes` : 'sem conexao'}
-              icon={<Zap className="w-4 h-4 text-white" />}
-              accent="bg-blue-500"
-            />
-
-            {/* Invest. Google separado */}
-            <KpiBox
-              label="Invest. Google Ads"
-              value={data && data.kpis.investimentoGoogle > 0 ? fmt(data.kpis.investimentoGoogle, 'currency') : '—'}
-              sub={data?.googleAds.connected ? `${fmt(data.googleAds.clicks)} cliques` : 'nao importado'}
-              icon={<BarChart3 className="w-4 h-4 text-white" />}
-              accent="bg-orange-500"
-            />
-
-            {/* Receita — SOMENTE Monde */}
-            <KpiBox
-              label="Receita (Monde)"
-              value={data && data.kpis.receita > 0 ? fmt(data.kpis.receita, 'currency') : '—'}
-              sub={
-                data?.pipedrive.connected
-                  ? <span>Fonte oficial: <span className="text-emerald-600 font-semibold">Pipe Monde</span></span>
-                  : 'aguardando importacao do Monde'
-              }
-              icon={<TrendingUp className="w-4 h-4 text-white" />}
-              accent="bg-emerald-500"
-              highlight={!!(data?.kpis.receita && data.kpis.receita > 0)}
-            />
-
-            {/* Vendas (Pipedrive) */}
-            <KpiBox
-              label="Vendas"
-              value={data && data.kpis.vendas > 0 ? fmt(data.kpis.vendas) : '—'}
-              sub={
-                data?.pipedrive.connected && data.kpis.vendas > 0
-                  ? `Ticket medio: ${fmt(Math.round(data.kpis.receita / data.kpis.vendas), 'currency')}`
-                  : 'deals com faturamento Monde'
-              }
-              icon={<ShoppingCart className="w-4 h-4 text-white" />}
-              accent="bg-violet-500"
-            />
-          </div>
-
-          {/* ── KPIs de desempenho ── */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-            <KpiBox
-              label="Invest. Total (Meta + Google)"
-              value={data && data.kpis.investimento > 0 ? fmt(data.kpis.investimento, 'currency') : '—'}
-              sub="soma dos dois canais pagos"
-              icon={<DollarSign className="w-4 h-4 text-white" />}
-              accent="bg-slate-600"
-            />
-            <KpiBox
-              label="ROAS Mídia Paga"
-              value={data?.kpis.roi !== null ? fmt(data!.kpis.roi!, 'multiplier') : '—'}
-              sub={
-                data?.kpis.roi !== null
-                  ? <span>receita mídia paga / investimento <span className="text-blue-500 font-semibold">✓</span></span>
-                  : 'dados insuficientes'
-              }
-              icon={<Target className="w-4 h-4 text-white" />}
-              accent={data?.kpis.roi !== null && data!.kpis.roi! >= 3 ? 'bg-emerald-600' : 'bg-amber-500'}
-              highlight={!!(data?.kpis.roi !== null && data!.kpis.roi! >= 3)}
-            />
-            <KpiBox
-              label="Custo por Oportunidade"
-              value={data?.kpis.cpl !== null ? fmt(data!.kpis.cpl!, 'currency') : '—'}
-              sub={
-                data?.kpis.conversionRate !== null
-                  ? `${data!.kpis.conversionRate}% das oportunidades do Pipe fecharam`
-                  : 'investimento total / oportunidades do Pipedrive'
-              }
-              icon={<Users className="w-4 h-4 text-white" />}
-              accent="bg-cyan-500"
-            />
-          </div>
-
-          {/* ── Cards de detalhe por fonte ── */}
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-
-            {/* Meta Ads */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Meta Ads</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Midia paga</p>
+            {/* Card 1 — Retorno de Mídia */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Retorno de Mídia</h2>
+                <div className="flex items-center gap-1.5">
+                  {data?.meta.connected && <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" title="Meta conectado" />}
+                  {data?.googleAds.connected && <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" title="Google importado" />}
                 </div>
-                {data?.meta.connected ? (
-                  <span className="text-xs text-emerald-600 font-medium">Conectado</span>
-                ) : (
-                  <Link href="/settings" className="text-xs text-blue-600 font-medium hover:underline">Conectar →</Link>
+              </div>
+
+              {/* ROAS destaque */}
+              <div className="mt-3 mb-5">
+                <p className="text-xs text-slate-400 mb-0.5">ROAS (receita mídia paga / invest.)</p>
+                <p className={`text-4xl font-bold ${data?.kpis.roi && data.kpis.roi >= 3 ? 'text-emerald-600' : data?.kpis.roi ? 'text-amber-500' : 'text-slate-300'}`}>
+                  {data?.kpis.roi != null ? fmt(data.kpis.roi, 'multiplier') : '—'}
+                </p>
+                {data?.kpis.roi != null && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    {data.kpis.roi >= 5 ? '✅ Excelente retorno' : data.kpis.roi >= 3 ? '✅ Retorno saudável' : '⚠️ Retorno abaixo do ideal'}
+                  </p>
                 )}
               </div>
-              {data?.meta.connected ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Investimento</span>
-                    <span className="text-sm font-semibold text-blue-700">{fmt(data.meta.investimento, 'currency')}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Impressoes</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.meta.impressions)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Cliques</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.meta.clicks)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Resultados</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.meta.results)}</span>
-                  </div>
-                  {data.meta.clicks > 0 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                      <span className="text-xs text-slate-500">CPC medio</span>
-                      <span className="text-sm font-semibold text-blue-600">
-                        {fmt(data.meta.investimento / data.meta.clicks, 'currency')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Zap className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-400 mb-3">Meta nao configurado</p>
-                  <Link href="/settings" className="text-xs text-blue-600 hover:underline">Configurar token →</Link>
-                </div>
-              )}
-            </div>
 
-            {/* Google Ads */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Google Ads</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Midia paga</p>
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                {/* Total investido */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Invest. total (Meta + Google)</span>
+                  <span className="text-sm font-bold text-slate-800">
+                    {data?.kpis.investimento > 0 ? fmt(data.kpis.investimento, 'currency') : '—'}
+                  </span>
                 </div>
-                {data?.googleAds.connected ? (
-                  <span className="text-xs text-emerald-600 font-medium">Carregado</span>
-                ) : (
-                  <Link href="/settings" className="text-xs text-blue-600 font-medium hover:underline">Importar →</Link>
-                )}
-              </div>
-              {data?.googleAds.connected ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Investimento</span>
-                    <span className="text-sm font-semibold text-orange-600">{fmt(data.googleAds.investimento, 'currency')}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Impressoes</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.googleAds.impressions)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Cliques</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.googleAds.clicks)}</span>
-                  </div>
-                  {data.googleAds.months.length > 0 && (
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-100">
-                      <span>Periodo</span>
-                      <span className="font-medium text-slate-600">
-                        {data.googleAds.months.map(m => m.month).join(', ')}
-                      </span>
-                    </div>
-                  )}
-                  {data.googleAds.clicks > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">CPC medio</span>
-                      <span className="text-sm font-semibold text-orange-500">
-                        {fmt(data.googleAds.investimento / data.googleAds.clicks, 'currency')}
-                      </span>
-                    </div>
-                  )}
-                  {data.googleAds.channelBreakdown.length > 0 && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <p className="text-xs text-slate-400 mb-2">Tipos visiveis</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {data.googleAds.channelBreakdown.slice(0, 4).map((item) => (
-                          <span
-                            key={`${item.channelType}-${item.channelSubType || 'none'}`}
-                            className="inline-flex items-center rounded-full bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700"
-                          >
-                            {getGoogleChannelLabel(item.channelType, item.channelSubType)}
-                          </span>
-                        ))}
+                {/* Meta vs Google */}
+                {(data?.kpis.investimentoMeta > 0 || data?.kpis.investimentoGoogle > 0) && (
+                  <div className="flex items-center gap-2">
+                    {data?.kpis.investimentoMeta > 0 && (
+                      <div className="flex-1 bg-blue-50 rounded-lg px-3 py-2">
+                        <p className="text-[10px] font-semibold text-blue-400 uppercase">Meta</p>
+                        <p className="text-sm font-bold text-blue-700">{fmt(data.kpis.investimentoMeta, 'currency')}</p>
+                        {data.meta.clicks > 0 && <p className="text-[10px] text-blue-400">{fmt(data.meta.clicks)} cliques</p>}
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {data?.kpis.investimentoGoogle > 0 && (
+                      <div className="flex-1 bg-orange-50 rounded-lg px-3 py-2">
+                        <p className="text-[10px] font-semibold text-orange-400 uppercase">Google</p>
+                        <p className="text-sm font-bold text-orange-700">{fmt(data.kpis.investimentoGoogle, 'currency')}</p>
+                        {data.googleAds.clicks > 0 && <p className="text-[10px] text-orange-400">{fmt(data.googleAds.clicks)} cliques</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Receita atribuída */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <span className="text-xs text-slate-500">Receita atribuída a mídia paga</span>
+                  <span className="text-sm font-bold text-emerald-600">
+                    {data?.kpis.receitaMidiaPaga > 0 ? fmt(data.kpis.receitaMidiaPaga, 'currency') : '—'}
+                  </span>
                 </div>
-              ) : (
-                <div className="text-center py-6">
-                  <BarChart3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-400 mb-3">Google Ads nao importado</p>
-                  <Link href="/settings" className="text-xs text-blue-600 hover:underline">Importar CSV →</Link>
-                </div>
-              )}
+              </div>
             </div>
 
-            {/* Pipe Monde — fonte oficial de receita */}
-            <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Pipe Monde</h2>
-                  <p className="text-xs text-emerald-600 font-medium mt-0.5">Fonte oficial de receita</p>
-                </div>
-                {data?.pipedrive.connected ? (
-                  <span className="text-xs text-emerald-600 font-medium">Carregado</span>
-                ) : (
-                  <Link href="/settings" className="text-xs text-blue-600 font-medium hover:underline">Importar →</Link>
+            {/* Card 2 — Funil Comercial */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Funil Comercial</h2>
+                {data?.pipedrive.connected && <span className="text-xs text-emerald-600 font-medium">Carregado</span>}
+              </div>
+
+              {/* Receita destaque */}
+              <div className="mt-3 mb-5">
+                <p className="text-xs text-slate-400 mb-0.5">Receita total (Monde)</p>
+                <p className="text-4xl font-bold text-emerald-600">
+                  {data?.kpis.receita > 0 ? fmt(data.kpis.receita, 'currency') : '—'}
+                </p>
+                {data?.kpis.vendas > 0 && data?.kpis.receita > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Ticket médio: <span className="font-semibold text-slate-600">{fmt(Math.round(data.kpis.receita / data.kpis.vendas), 'currency')}</span>
+                  </p>
                 )}
               </div>
-              {data?.pipedrive.connected ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Receita Monde</span>
-                    <span className="text-sm font-bold text-emerald-700">{fmt(data.pipedrive.mondeRevenue, 'currency')}</span>
+
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                {/* Funil visual */}
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-blue-600">{data?.pipedrive.totalLeads > 0 ? fmt(data.pipedrive.totalLeads) : '—'}</p>
+                    <p className="text-[10px] text-slate-400 uppercase">Oport.</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Deals fechados</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.pipedrive.totalDeals)}</span>
+                  <span className="text-slate-300 text-lg">→</span>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-emerald-600">{data?.kpis.vendas > 0 ? fmt(data.kpis.vendas) : '—'}</p>
+                    <p className="text-[10px] text-slate-400 uppercase">Vendas</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Com fat. Monde</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.pipedrive.withMondeBilling)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Canais</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.pipedrive.channels.length)}</span>
-                  </div>
-                  {data.pipedrive.totalDeals > 0 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                      <span className="text-xs text-slate-500">Ticket medio</span>
-                      <span className="text-sm font-semibold text-violet-700">
-                        {fmt(Math.round(data.pipedrive.mondeRevenue / data.pipedrive.totalDeals), 'currency')}
-                      </span>
-                    </div>
+                  {data?.kpis.conversionRate != null && (
+                    <span className={`ml-1 text-xs font-bold px-2 py-0.5 rounded-full ${data.kpis.conversionRate >= 20 ? 'bg-emerald-100 text-emerald-700' : data.kpis.conversionRate >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>
+                      {fmt(data.kpis.conversionRate, 'pct')}
+                    </span>
                   )}
                 </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Database className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-400 mb-1">Pipe Monde nao importado</p>
-                  <p className="text-xs text-slate-400 mb-3">Esta e a unica fonte de receita real</p>
-                  <Link href="/settings" className="text-xs text-blue-600 hover:underline">Importar planilha →</Link>
+                {/* Perdidos */}
+                {data?.pipedrive.totalLost > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">Perdidos no período</span>
+                    <span className="text-sm font-semibold text-red-500">{fmt(data.pipedrive.totalLost)}</span>
+                  </div>
+                )}
+                {/* Ciclo médio */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <span className="text-xs text-slate-500">Ciclo médio de venda</span>
+                  <span className="text-sm font-bold text-violet-600">
+                    {data?.kpis.avgDaysToWin != null ? `${data.kpis.avgDaysToWin} dias` : '—'}
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* SDR — atendimento e conversão */}
-            {data?.sdr.enabled && <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">SDR</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Atendimento e conversao</p>
-                </div>
-                {data?.sdr.hasData ? (
-                  <span className="text-xs text-emerald-600 font-medium">Carregado</span>
-                ) : (
-                  <Link href="/settings" className="text-xs text-blue-600 font-medium hover:underline">Importar →</Link>
-                )}
+            {/* Card 3 — Origem da Receita */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Origem da Receita</h2>
+                <span className="text-xs text-slate-400">Monde</span>
               </div>
-              {data?.sdr.hasData ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Leads atendidos</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.sdr.totalLeads)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Qualificados</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.sdr.totalQualified)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Vendas fechadas</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(data.sdr.totalSales)}</span>
-                  </div>
-                  {data.kpis.conversionRate !== null && (
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                      <span className="text-xs text-slate-500">Taxa de conversao</span>
-                      <span className={`text-sm font-bold ${data.kpis.conversionRate >= 10 ? 'text-emerald-600' : data.kpis.conversionRate >= 5 ? 'text-amber-600' : 'text-red-500'}`}>
-                        {fmt(data.kpis.conversionRate, 'pct')}
-                      </span>
-                    </div>
-                  )}
-                  {data.sdr.channels.length > 0 && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <p className="text-xs text-slate-400 mb-2">Canais de origem</p>
-                      {data.sdr.channels.slice(0, 3).map(c => (
-                        <div key={c.canal} className="flex justify-between items-center mb-1">
-                          <span className="text-xs text-slate-600 truncate max-w-[120px]">{c.canal}</span>
-                          <span className="text-xs font-medium text-slate-700">{fmt(c.vendas)} vendas</span>
+
+              {/* Cabeçalho: vendas totais como hero (não duplica receita do Card 2) */}
+              <div className="mt-3 mb-4">
+                <p className="text-xs text-slate-400 mb-0.5">Total de vendas no período</p>
+                <p className="text-4xl font-bold text-slate-800">
+                  {data?.kpis.vendas > 0 ? fmt(data.kpis.vendas) : '—'}
+                  <span className="text-sm font-medium text-slate-400 ml-2">vendas</span>
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {data?.kpis.receita > 0 ? fmt(data.kpis.receita, 'currency') : '—'} distribuídos por origem
+                </p>
+              </div>
+
+              {/* Ranked list — barra horizontal proporcional */}
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                {(() => {
+                  const ATTR_STYLE: Record<string, { bar: string; dot: string; text: string; label: string }> = {
+                    PAID_MEDIA:         { bar: 'bg-blue-500',   dot: 'bg-blue-500',   text: 'text-blue-700',   label: 'Mídia Paga' },
+                    ORGANIC_COMMERCIAL: { bar: 'bg-amber-400',  dot: 'bg-amber-400',  text: 'text-amber-700',  label: 'Orgânico' },
+                    BRAND_BASE:         { bar: 'bg-violet-500', dot: 'bg-violet-500', text: 'text-violet-700', label: 'Base / Branding' },
+                    UNKNOWN:            { bar: 'bg-slate-300',  dot: 'bg-slate-400',  text: 'text-slate-500',  label: 'Não informado' },
+                  };
+                  const groups = (data?.pipedrive.byAttribution || []).filter(g => g.receita > 0);
+                  const maxPct = groups.length > 0 ? Math.max(...groups.map(g => g.receitaPct)) : 100;
+                  return groups.map(group => {
+                    const style = ATTR_STYLE[group.attribution] || ATTR_STYLE.UNKNOWN;
+                    const barWidth = maxPct > 0 ? (group.receitaPct / maxPct) * 100 : 0;
+                    return (
+                      <div key={group.attribution} className="space-y-1.5">
+                        {/* Linha: label — valor — % */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${style.dot}`} />
+                            <span className={`text-xs font-semibold truncate ${style.text}`}>{style.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <span className="text-sm font-bold text-slate-800">{fmt(group.receita, 'currency')}</span>
+                            <span className="text-xs font-medium text-slate-400 w-9 text-right">{fmt(group.receitaPct, 'pct')}</span>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-400 mb-3">SDR nao importado</p>
-                  <Link href="/settings" className="text-xs text-blue-600 hover:underline">Importar planilha →</Link>
-                </div>
-              )}
-            </div>}
+                        {/* Barra proporcional + vendas */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${style.bar} rounded-full transition-all`} style={{ width: `${barWidth}%` }} />
+                          </div>
+                          <span className="text-[10px] text-slate-400 w-14 text-right flex-shrink-0">
+                            {fmt(group.vendas)} venda{group.vendas !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
           </div>
 
           {/* ── Receita por Origem (Attribution Breakdown) ── */}

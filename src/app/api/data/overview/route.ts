@@ -292,6 +292,7 @@ export async function GET(req: NextRequest) {
         roi,  // ROAS: receitaMidiaPaga / totalInvestimento
         cpl,  // Custo por Oportunidade: investimento total / oportunidades do Pipedrive
         conversionRate, // % de leads que viraram venda
+        avgDaysToWin: pipedriveMetrics?.avgDaysToWin ?? null, // tempo médio entre entrada e venda (Monde)
       },
     });
   } catch (error) {

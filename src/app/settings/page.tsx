@@ -87,6 +87,11 @@ export default function SettingsPage() {
 
   // ── Init ──
   useEffect(() => {
+    fetch('/api/meta/connect')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.connected) setMetaStatus('connected'); })
+      .catch(() => {});
+
     fetch('/api/settings/branding')
       .then(r => r.ok ? r.json() : null)
       .then(d => {

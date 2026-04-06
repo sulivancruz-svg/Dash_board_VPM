@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setMetaToken } from '@/lib/meta-token-store';
+import { setMetaToken, getMetaToken } from '@/lib/meta-token-store';
+
+export async function GET() {
+  const token = getMetaToken();
+  if (!token) {
+    return NextResponse.json({ connected: false });
+  }
+  return NextResponse.json({ connected: true, accountId: token.accountId, accountName: token.accountName });
+}
 
 export async function POST(req: NextRequest) {
   try {
