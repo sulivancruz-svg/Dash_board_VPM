@@ -303,7 +303,7 @@ export async function GET(req: NextRequest) {
       req.nextUrl.searchParams.get('end'),
       Number.parseInt(req.nextUrl.searchParams.get('period') || '30', 10),
     );
-    const metaToken = getMetaToken();
+    const metaToken = await getMetaToken();
 
     if (!metaToken?.token) {
       return NextResponse.json(

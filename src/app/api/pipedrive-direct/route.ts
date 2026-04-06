@@ -16,8 +16,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
-  const credentials = getPipedriveDirectCredentials();
-  const storedData = getPipedriveDirectData();
+  const credentials = await getPipedriveDirectCredentials();
+  const storedData = await getPipedriveDirectData();
   const searchParams = req.nextUrl.searchParams;
   const { start, end, periodDays } = resolveDateRange(
     searchParams.get('start'),
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     const validation = await validatePipedriveConnection(companyDomain, apiToken);
-    setPipedriveDirectCredentials({
+    await setPipedriveDirectCredentials({
       companyName,
       companyDomain,
       apiToken,
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  clearPipedriveDirectCredentials();
-  clearPipedriveDirectData();
+  await clearPipedriveDirectCredentials();
+  await clearPipedriveDirectData();
   return NextResponse.json({ message: 'Conexao com Pipedrive removida' });
 }

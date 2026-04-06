@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     const buffer = await file.arrayBuffer();
     const parsed = parsePipedriveExcel(Buffer.from(buffer));
-    const directData = getPipedriveDirectData();
+    const directData = await getPipedriveDirectData();
     const store = buildPipedriveDashboardStore({
       updatedAt: new Date().toISOString(),
       mondeDeals: parsed.mondeDeals ?? [],
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       fallbackPeriod: parsed.period,
     });
 
-    setPipedriveData(store);
+    await setPipedriveData(store);
 
     return NextResponse.json({
       message: directData?.allDeals?.length
@@ -49,15 +49,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    const dataPath = path.join(process.cwd(), '.pipedrive-data.json');
-
-    if (!fs.existsSync(dataPath)) {
+    const { getPipedriveData: getPD } = await import('@/lib/data-store');
+    const data = await getPD();
+    if (!data) {
       return NextResponse.json({ error: 'Dados nao encontrados' }, { status: 404 });
     }
-
-    return NextResponse.json(JSON.parse(fs.readFileSync(dataPath, 'utf-8')));
+    return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao ler dados' }, { status: 500 });
   }

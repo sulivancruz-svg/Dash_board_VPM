@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { NextResponse } from 'next/server';
+import { kvDel } from '@/lib/storage';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
-    const dataPath = path.join(process.cwd(), '.sdr-data.json');
-
-    if (fs.existsSync(dataPath)) {
-      fs.unlinkSync(dataPath);
-    }
+    await kvDel('sdr-data');
 
     return NextResponse.json({
       message: 'Dados SDR removidos com sucesso',

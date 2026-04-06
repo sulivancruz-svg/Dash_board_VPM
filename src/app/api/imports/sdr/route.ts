@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     const totalLeads = parsed.summary.reduce((s, r) => s + r.leadsTotal, 0);
     const totalQualified = parsed.summary.reduce((s, r) => s + r.leadsQualified, 0);
 
-    setSdrData({
+    await setSdrData({
       updatedAt: new Date().toISOString(),
       totalLeads,
       totalQualified,

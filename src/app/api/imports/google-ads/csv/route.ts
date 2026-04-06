@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { setSourceControls } from '@/lib/source-controls';
+import { setGoogleAdsStoredData } from '@/lib/google-ads-store';
 
 const MONTH_MAP: Record<number, string> = {
   1: 'janeiro', 2: 'fevereiro', 3: 'março', 4: 'abril',
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Agregar por mês e manter base diária para filtros de 7/14/30 dias
-    const monthMap = new Map<string, { year: number; month: string; spend: number; clicks: number; impressions: number; days: number }>();
+    const monthMap = new Map<string, { year: number; month: string; spend: number; clicks: number; impressions: number; conversions: number; days: number }>();
     const daily: Array<{ date: string; spend: number; clicks: number; impressions: number; conversions: number }> = [];
 
     for (let i = headerIndex + 1; i < lines.length; i++) {
@@ -96,12 +95,13 @@ export async function POST(req: NextRequest) {
         conversions: 0,
       });
 
-      const existing = monthMap.get(key) || { year, month: monthName, spend: 0, clicks: 0, impressions: 0, days: 0 };
+      const existing = monthMap.get(key) || { year, month: monthName, spend: 0, clicks: 0, impressions: 0, conversions: 0, days: 0 };
       monthMap.set(key, {
         ...existing,
         spend: existing.spend + spend,
         clicks: existing.clicks + clicks,
         impressions: existing.impressions + impressions,
+        conversions: 0,
         days: existing.days + 1,
       });
     }
@@ -136,10 +136,9 @@ export async function POST(req: NextRequest) {
       dailyCampaigns: [],
     };
 
-    // Salvar no arquivo
-    const dataPath = path.join(process.cwd(), '.google-ads-data.json');
-    fs.writeFileSync(dataPath, JSON.stringify(googleAdsData, null, 2), 'utf-8');
-    setSourceControls({ googleAdsEnabled: true });
+    // Salvar no store
+    await setGoogleAdsStoredData(googleAdsData);
+    await setSourceControls({ googleAdsEnabled: true });
 
     return NextResponse.json({
       message: `Google Ads importado: ${months.length} ${months.length === 1 ? 'mês' : 'meses'}`,

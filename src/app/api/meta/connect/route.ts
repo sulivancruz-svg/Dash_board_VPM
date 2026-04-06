@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { setMetaToken, getMetaToken } from '@/lib/meta-token-store';
 
 export async function GET() {
-  const token = getMetaToken();
+  const token = await getMetaToken();
   if (!token) {
     return NextResponse.json({ connected: false });
   }
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
       // Conta única: salvar direto
       const adAccount = allAccounts[0];
-      setMetaToken(token, adAccount.id, accountName);
+      await setMetaToken(token, adAccount.id, accountName);
 
       return NextResponse.json({
         status: 'CONNECTED',

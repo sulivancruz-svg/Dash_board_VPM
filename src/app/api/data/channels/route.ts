@@ -33,9 +33,9 @@ export async function GET(req: NextRequest) {
       )
       : null;
 
-    const sourceControls = getSourceControls();
-    const sdrData = sourceControls.sdrEnabled ? getSdrData() : null;
-    const pipedriveData = sourceControls.pipedriveEnabled ? getPipedriveData() : null;
+    const sourceControls = await getSourceControls();
+    const sdrData = sourceControls.sdrEnabled ? await getSdrData() : null;
+    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
     const pipedriveMetrics = getPipedriveMetricsForRange(pipedriveData, range || undefined);
 
     if (!sdrData && !pipedriveData) {

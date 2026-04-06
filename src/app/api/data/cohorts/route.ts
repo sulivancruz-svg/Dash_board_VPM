@@ -32,7 +32,7 @@ interface CohortMonthStats {
 }
 
 async function fetchMetaDailySpend(start: string, end: string): Promise<{ connected: boolean; spendByMonth: Map<string, number> }> {
-  const metaToken = getMetaToken();
+  const metaToken = await getMetaToken();
   if (!metaToken?.token || !metaToken.accountId) {
     return { connected: false, spendByMonth: new Map() };
   }
@@ -193,8 +193,8 @@ export async function GET(req: NextRequest) {
       Number.parseInt(req.nextUrl.searchParams.get('period') || '30', 10),
     );
 
-    const sourceControls = getSourceControls();
-    const pipedriveData = sourceControls.pipedriveEnabled ? getPipedriveData() : null;
+    const sourceControls = await getSourceControls();
+    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
     const pipelineDeals = Array.isArray(pipedriveData?.pipelineDeals) ? pipedriveData.pipelineDeals : [];
     const mondeDeals = Array.isArray(pipedriveData?.mondeDeals) ? pipedriveData.mondeDeals : [];
 
@@ -225,7 +225,7 @@ export async function GET(req: NextRequest) {
 
     const googleSpendByMonth = new Map<string, number>();
     if (sourceControls.googleAdsEnabled) {
-      const googleData = getGoogleAdsDataForDateRange(range.start, range.end);
+      const googleData = await getGoogleAdsDataForDateRange(range.start, range.end);
       for (const dailyRow of googleData?.daily || []) {
         const monthKey = getMonthKey(dailyRow.date);
         googleSpendByMonth.set(monthKey, round2((googleSpendByMonth.get(monthKey) || 0) + dailyRow.spend));

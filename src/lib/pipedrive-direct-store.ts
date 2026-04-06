@@ -1,9 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import { blobDel, blobGetJson, blobSetJson, kvDel, kvGet, kvSet } from '@/lib/storage';
 import { decryptToken, encryptToken } from '@/lib/crypto';
-
-const CONFIG_FILE = path.join(process.cwd(), '.pipedrive-direct-config.json');
-const DATA_FILE = path.join(process.cwd(), '.pipedrive-direct-data.json');
 
 interface EncryptedConfigStore {
   version: 2;
@@ -72,24 +68,9 @@ export interface PipedriveDirectData {
   allDeals: PipedriveDirectRecentDeal[];
 }
 
-function readConfigFile(): EncryptedConfigStore | null {
-  try {
-    if (!fs.existsSync(CONFIG_FILE)) {
-      return null;
-    }
-
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')) as EncryptedConfigStore;
-  } catch (error) {
-    console.error('Error reading Pipedrive direct config:', error);
-    return null;
-  }
-}
-
-export function getPipedriveDirectCredentials(): PipedriveDirectCredentials | null {
-  const store = readConfigFile();
-  if (!store?.encryptedToken || !store.iv || !store.companyDomain) {
-    return null;
-  }
+export async function getPipedriveDirectCredentials(): Promise<PipedriveDirectCredentials | null> {
+  const store = await kvGet<EncryptedConfigStore>('pipedrive-direct-config');
+  if (!store?.encryptedToken || !store.iv || !store.companyDomain) return null;
 
   try {
     return {
@@ -105,11 +86,11 @@ export function getPipedriveDirectCredentials(): PipedriveDirectCredentials | nu
   }
 }
 
-export function setPipedriveDirectCredentials(input: {
+export async function setPipedriveDirectCredentials(input: {
   apiToken: string;
   companyName: string;
   companyDomain: string;
-}): void {
+}): Promise<void> {
   const encrypted = encryptToken(input.apiToken);
   const now = new Date().toISOString();
   const payload: EncryptedConfigStore = {
@@ -121,47 +102,21 @@ export function setPipedriveDirectCredentials(input: {
     connectedAt: now,
     lastValidatedAt: now,
   };
-
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(payload, null, 2), 'utf-8');
+  await kvSet('pipedrive-direct-config', payload);
 }
 
-export function clearPipedriveDirectCredentials(): void {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      fs.unlinkSync(CONFIG_FILE);
-    }
-  } catch (error) {
-    console.error('Error clearing Pipedrive direct config:', error);
-  }
+export async function clearPipedriveDirectCredentials(): Promise<void> {
+  await kvDel('pipedrive-direct-config');
 }
 
-export function getPipedriveDirectData(): PipedriveDirectData | null {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return null;
-    }
-
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8')) as PipedriveDirectData;
-  } catch (error) {
-    console.error('Error reading Pipedrive direct data:', error);
-    return null;
-  }
+export async function getPipedriveDirectData(): Promise<PipedriveDirectData | null> {
+  return blobGetJson<PipedriveDirectData>('pipedrive-direct-data');
 }
 
-export function setPipedriveDirectData(data: PipedriveDirectData): void {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Error saving Pipedrive direct data:', error);
-  }
+export async function setPipedriveDirectData(data: PipedriveDirectData): Promise<void> {
+  await blobSetJson('pipedrive-direct-data', data);
 }
 
-export function clearPipedriveDirectData(): void {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      fs.unlinkSync(DATA_FILE);
-    }
-  } catch (error) {
-    console.error('Error clearing Pipedrive direct data:', error);
-  }
+export async function clearPipedriveDirectData(): Promise<void> {
+  await blobDel('pipedrive-direct-data');
 }

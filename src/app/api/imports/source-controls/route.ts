@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSourceControls, setSourceControls } from '@/lib/source-controls';
 
 export async function GET() {
-  return NextResponse.json(getSourceControls());
+  return NextResponse.json(await getSourceControls());
 }
 
 export async function POST(req: NextRequest) {
@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
       googleAdsEnabled: boolean;
     }>;
 
-    const current = getSourceControls();
-    const nextControls = setSourceControls({
+    const current = await getSourceControls();
+    const nextControls = await setSourceControls({
       sdrEnabled: typeof body.sdrEnabled === 'boolean' ? body.sdrEnabled : current.sdrEnabled,
       pipedriveEnabled: typeof body.pipedriveEnabled === 'boolean' ? body.pipedriveEnabled : current.pipedriveEnabled,
       googleAdsEnabled: typeof body.googleAdsEnabled === 'boolean' ? body.googleAdsEnabled : current.googleAdsEnabled,

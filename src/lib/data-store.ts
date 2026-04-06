@@ -1,8 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-const SDR_FILE = path.join(process.cwd(), '.sdr-data.json');
-const PIPEDRIVE_FILE = path.join(process.cwd(), '.pipedrive-data.json');
+import { blobGetJson, blobSetJson, kvGet, kvSet } from '@/lib/storage';
 
 export interface ChannelSales {
   canal: string;
@@ -57,40 +53,22 @@ export interface PipedriveStore {
   mondeDeals?: PipedriveDealRecord[];
 }
 
-export function setSdrData(data: SdrStore): void {
-  try {
-    fs.writeFileSync(SDR_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Error saving SDR data:', e);
-  }
+/* ── SDR (small → KV) ─────────────────────────────── */
+
+export async function setSdrData(data: SdrStore): Promise<void> {
+  await kvSet('sdr-data', data);
 }
 
-export function getSdrData(): SdrStore | null {
-  try {
-    if (fs.existsSync(SDR_FILE)) {
-      return JSON.parse(fs.readFileSync(SDR_FILE, 'utf-8'));
-    }
-  } catch (e) {
-    console.error('Error reading SDR data:', e);
-  }
-  return null;
+export async function getSdrData(): Promise<SdrStore | null> {
+  return kvGet<SdrStore>('sdr-data');
 }
 
-export function setPipedriveData(data: PipedriveStore): void {
-  try {
-    fs.writeFileSync(PIPEDRIVE_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Error saving Pipedrive data:', e);
-  }
+/* ── Pipedrive Monde (large → Blob) ───────────────── */
+
+export async function setPipedriveData(data: PipedriveStore): Promise<void> {
+  await blobSetJson('pipedrive-data', data);
 }
 
-export function getPipedriveData(): PipedriveStore | null {
-  try {
-    if (fs.existsSync(PIPEDRIVE_FILE)) {
-      return JSON.parse(fs.readFileSync(PIPEDRIVE_FILE, 'utf-8'));
-    }
-  } catch (e) {
-    console.error('Error reading Pipedrive data:', e);
-  }
-  return null;
+export async function getPipedriveData(): Promise<PipedriveStore | null> {
+  return blobGetJson<PipedriveStore>('pipedrive-data');
 }

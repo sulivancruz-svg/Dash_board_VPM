@@ -1,14 +1,10 @@
-import fs from 'fs';
-import path from 'path';
+import { blobDeleteFile, blobUploadFile, kvGet, kvSet } from '@/lib/storage';
 
 export interface BrandingSettings {
   companyName: string;
-  logoPath: string | null;
+  logoPath: string | null;  // local path (/branding-assets/...) or Blob URL
   updatedAt: string | null;
 }
-
-const STORE_FILE = path.join(process.cwd(), '.branding-settings.json');
-const BRANDING_DIR = path.join(process.cwd(), 'public', 'branding-assets');
 
 const DEFAULT_SETTINGS: BrandingSettings = {
   companyName: 'Marketing Dashboard',
@@ -16,17 +12,10 @@ const DEFAULT_SETTINGS: BrandingSettings = {
   updatedAt: null,
 };
 
-function ensureBrandingDir() {
-  fs.mkdirSync(BRANDING_DIR, { recursive: true });
-}
-
-function readStore(): BrandingSettings {
+async function readStore(): Promise<BrandingSettings> {
   try {
-    if (!fs.existsSync(STORE_FILE)) {
-      return DEFAULT_SETTINGS;
-    }
-
-    const parsed = JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8')) as Partial<BrandingSettings>;
+    const parsed = await kvGet<Partial<BrandingSettings>>('branding-settings');
+    if (!parsed) return DEFAULT_SETTINGS;
     return {
       companyName: parsed.companyName || DEFAULT_SETTINGS.companyName,
       logoPath: parsed.logoPath || null,
@@ -37,46 +26,37 @@ function readStore(): BrandingSettings {
   }
 }
 
-function writeStore(settings: BrandingSettings) {
-  fs.writeFileSync(STORE_FILE, JSON.stringify(settings, null, 2), 'utf-8');
-}
-
-function deleteLogoFileIfManaged(logoPath: string | null) {
-  if (!logoPath || !logoPath.startsWith('/branding-assets/')) {
-    return;
-  }
-
-  const absolutePath = path.join(process.cwd(), 'public', logoPath.replace(/^\//, '').replace(/\//g, path.sep));
-  if (fs.existsSync(absolutePath)) {
-    fs.unlinkSync(absolutePath);
-  }
-}
-
-export function getBrandingSettings(): BrandingSettings {
+export async function getBrandingSettings(): Promise<BrandingSettings> {
   return readStore();
 }
 
-export function saveBrandingSettings(input: { companyName: string; logoBuffer?: Buffer | null; logoFileName?: string | null; removeLogo?: boolean }): BrandingSettings {
-  ensureBrandingDir();
-
-  const current = readStore();
+export async function saveBrandingSettings(input: {
+  companyName: string;
+  logoBuffer?: Buffer | null;
+  logoFileName?: string | null;
+  removeLogo?: boolean;
+}): Promise<BrandingSettings> {
+  const current = await readStore();
   let nextLogoPath = current.logoPath;
 
   if (input.removeLogo) {
-    deleteLogoFileIfManaged(current.logoPath);
+    if (current.logoPath) await blobDeleteFile(current.logoPath);
     nextLogoPath = null;
   }
 
   if (input.logoBuffer && input.logoFileName) {
-    deleteLogoFileIfManaged(current.logoPath);
+    if (current.logoPath) await blobDeleteFile(current.logoPath);
 
-    const originalExt = path.extname(input.logoFileName).toLowerCase();
-    const safeExt = ['.png', '.jpg', '.jpeg', '.webp', '.svg'].includes(originalExt) ? originalExt : '.png';
-    const safeName = `${new Date().toISOString().replace(/[:.]/g, '-')}${safeExt}`;
-    const filePath = path.join(BRANDING_DIR, safeName);
+    const ext = input.logoFileName.split('.').pop()?.toLowerCase() || 'png';
+    const safeExt = ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext) ? ext : 'png';
+    const safeName = `${new Date().toISOString().replace(/[:.]/g, '-')}.${safeExt}`;
+    const contentType = safeExt === 'svg' ? 'image/svg+xml' : `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`;
 
-    fs.writeFileSync(filePath, input.logoBuffer);
-    nextLogoPath = `/branding-assets/${safeName}`;
+    nextLogoPath = await blobUploadFile(
+      `branding-assets/${safeName}`,
+      input.logoBuffer,
+      contentType,
+    );
   }
 
   const nextSettings: BrandingSettings = {
@@ -85,16 +65,23 @@ export function saveBrandingSettings(input: { companyName: string; logoBuffer?: 
     updatedAt: new Date().toISOString(),
   };
 
-  writeStore(nextSettings);
+  await kvSet('branding-settings', nextSettings);
   return nextSettings;
 }
 
-export function getBrandingResponse() {
-  const settings = readStore();
-  return {
-    ...settings,
-    logoUrl: settings.logoPath && settings.updatedAt
-      ? `/api/settings/branding/logo?v=${encodeURIComponent(settings.updatedAt)}`
-      : settings.logoPath,
-  };
+export async function getBrandingResponse(): Promise<{
+  companyName: string;
+  logoPath: string | null;
+  updatedAt: string | null;
+  logoUrl: string | null;
+}> {
+  const settings = await readStore();
+  const logoUrl =
+    settings.logoPath && settings.updatedAt
+      ? settings.logoPath.startsWith('https://')
+        ? settings.logoPath  // Blob URL — serve directly
+        : `/api/settings/branding/logo?v=${encodeURIComponent(settings.updatedAt)}`
+      : settings.logoPath;
+
+  return { ...settings, logoUrl };
 }

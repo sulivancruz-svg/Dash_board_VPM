@@ -5,14 +5,24 @@ node_modules/
 .env.*.local
 *.log
 .DS_Store
+
+# Dados locais (não entram no repositório — ficam no Vercel KV/Blob em produção)
 .sdr-data.json
 .pipedrive-data.json
+.pipedrive-direct-data.json
+.pipedrive-direct-config.json
 .google-ads-credentials.json
 .google-ads-data.json
 .meta-token.json
+.source-controls.json
+.branding-settings.json
+.historical-imports.json
 historical-imports/
+public/branding-assets/
+
 test-results/
 .claude/
 .codex-runtime/
 dist/
 build/
+tsconfig.tsbuildinfo

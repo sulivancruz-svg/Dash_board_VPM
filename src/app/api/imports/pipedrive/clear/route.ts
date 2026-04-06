@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { NextResponse } from 'next/server';
+import { blobDel } from '@/lib/storage';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
-    const dataPath = path.join(process.cwd(), '.pipedrive-data.json');
-
-    if (fs.existsSync(dataPath)) {
-      fs.unlinkSync(dataPath);
-    }
+    await blobDel('pipedrive-data');
 
     return NextResponse.json({
       message: 'Dados do Pipedrive removidos com sucesso',

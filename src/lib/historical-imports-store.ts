@@ -1,6 +1,5 @@
-import fs from 'fs';
-import path from 'path';
 import crypto from 'crypto';
+import { blobDeleteFile, blobUploadFile, kvGet, kvSet } from '@/lib/storage';
 
 export type HistoricalImportSource = 'sdr' | 'pipedrive_monde' | 'google_ads' | 'meta_ads';
 
@@ -14,7 +13,7 @@ export interface HistoricalImportBatch {
   notes: string | null;
   originalFileName: string;
   storedFileName: string;
-  storedRelativePath: string;
+  storedRelativePath: string;  // URL (prod) or relative path (dev)
   fileSize: number;
   uploadedAt: string;
   status: 'uploaded';
@@ -24,44 +23,25 @@ interface HistoricalImportsStore {
   batches: HistoricalImportBatch[];
 }
 
-const STORE_FILE = path.join(process.cwd(), '.historical-imports.json');
-const FILES_DIR = path.join(process.cwd(), 'historical-imports');
-
-function ensureStorage(): void {
-  if (!fs.existsSync(FILES_DIR)) {
-    fs.mkdirSync(FILES_DIR, { recursive: true });
-  }
-
-  if (!fs.existsSync(STORE_FILE)) {
-    fs.writeFileSync(STORE_FILE, JSON.stringify({ batches: [] }, null, 2), 'utf-8');
-  }
-}
-
-function readStore(): HistoricalImportsStore {
-  ensureStorage();
-
-  try {
-    return JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8')) as HistoricalImportsStore;
-  } catch {
-    return { batches: [] };
-  }
-}
-
-function writeStore(store: HistoricalImportsStore): void {
-  ensureStorage();
-  fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
-}
-
 function sanitizeFileName(fileName: string): string {
   return fileName.replace(/[^\w.\-() ]+/g, '_').trim() || 'arquivo';
 }
 
-export function listHistoricalImportBatches(): HistoricalImportBatch[] {
-  const store = readStore();
+async function readStore(): Promise<HistoricalImportsStore> {
+  const store = await kvGet<HistoricalImportsStore>('historical-imports');
+  return store ?? { batches: [] };
+}
+
+async function writeStore(store: HistoricalImportsStore): Promise<void> {
+  await kvSet('historical-imports', store);
+}
+
+export async function listHistoricalImportBatches(): Promise<HistoricalImportBatch[]> {
+  const store = await readStore();
   return store.batches.slice().sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
 }
 
-export function saveHistoricalImportBatch(input: {
+export async function saveHistoricalImportBatch(input: {
   source: HistoricalImportSource;
   referenceYear: number;
   periodStart: string;
@@ -70,19 +50,14 @@ export function saveHistoricalImportBatch(input: {
   notes?: string | null;
   fileName: string;
   fileBuffer: Buffer;
-}): HistoricalImportBatch {
-  ensureStorage();
-
+}): Promise<HistoricalImportBatch> {
   const batchId = crypto.randomUUID();
   const safeFileName = sanitizeFileName(input.fileName);
-  const sourceDir = path.join(FILES_DIR, input.source, String(input.referenceYear));
-  fs.mkdirSync(sourceDir, { recursive: true });
-
   const storedFileName = `${new Date().toISOString().replace(/[:.]/g, '-')}_${safeFileName}`;
-  const absoluteFilePath = path.join(sourceDir, storedFileName);
-  fs.writeFileSync(absoluteFilePath, input.fileBuffer);
+  const blobPath = `historical-imports/${input.source}/${input.referenceYear}/${storedFileName}`;
 
-  const relativePath = path.relative(process.cwd(), absoluteFilePath).replace(/\\/g, '/');
+  const storedUrl = await blobUploadFile(blobPath, input.fileBuffer);
+
   const batch: HistoricalImportBatch = {
     id: batchId,
     source: input.source,
@@ -93,59 +68,35 @@ export function saveHistoricalImportBatch(input: {
     notes: input.notes?.trim() || null,
     originalFileName: input.fileName,
     storedFileName,
-    storedRelativePath: relativePath,
+    storedRelativePath: storedUrl,
     fileSize: input.fileBuffer.byteLength,
     uploadedAt: new Date().toISOString(),
     status: 'uploaded',
   };
 
-  const store = readStore();
+  const store = await readStore();
   store.batches.unshift(batch);
-  writeStore(store);
+  await writeStore(store);
 
   return batch;
 }
 
-export function deleteHistoricalImportBatch(batchId: string): HistoricalImportBatch | null {
-  const store = readStore();
-  const index = store.batches.findIndex((batch) => batch.id === batchId);
-
-  if (index < 0) {
-    return null;
-  }
+export async function deleteHistoricalImportBatch(
+  batchId: string,
+): Promise<HistoricalImportBatch | null> {
+  const store = await readStore();
+  const index = store.batches.findIndex((b) => b.id === batchId);
+  if (index < 0) return null;
 
   const [removedBatch] = store.batches.splice(index, 1);
-  const absoluteFilePath = path.join(process.cwd(), removedBatch.storedRelativePath);
 
+  // Delete the stored file (works for both Blob URLs and local paths)
   try {
-    if (fs.existsSync(absoluteFilePath)) {
-      fs.unlinkSync(absoluteFilePath);
-    }
-
-    removeEmptyParentDirs(path.dirname(absoluteFilePath), FILES_DIR);
+    await blobDeleteFile(removedBatch.storedRelativePath);
   } catch (error) {
     console.error('Error deleting historical import file:', error);
   }
 
-  writeStore(store);
+  await writeStore(store);
   return removedBatch;
-}
-
-function removeEmptyParentDirs(currentDir: string, stopDir: string): void {
-  let dir = currentDir;
-  const normalizedStopDir = path.resolve(stopDir);
-
-  while (path.resolve(dir).startsWith(normalizedStopDir) && path.resolve(dir) !== normalizedStopDir) {
-    try {
-      if (fs.existsSync(dir) && fs.readdirSync(dir).length === 0) {
-        fs.rmdirSync(dir);
-        dir = path.dirname(dir);
-        continue;
-      }
-    } catch {
-      return;
-    }
-
-    return;
-  }
 }

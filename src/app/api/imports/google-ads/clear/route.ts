@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { NextResponse } from 'next/server';
+import { clearGoogleAdsStoredData } from '@/lib/google-ads-store';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
-    const dataPath = path.join(process.cwd(), '.google-ads-data.json');
-
-    if (fs.existsSync(dataPath)) {
-      fs.unlinkSync(dataPath);
-    }
+    await clearGoogleAdsStoredData();
 
     return NextResponse.json({
       message: 'Dados do Google Ads removidos com sucesso',

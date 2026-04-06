@@ -33,15 +33,15 @@ export async function GET(req: NextRequest) {
       Number.parseInt(req.nextUrl.searchParams.get('period') || '30', 10),
     );
     const periodDays = range.periodDays;
-    const sourceControls = getSourceControls();
-    const metaToken = getMetaToken();
+    const sourceControls = await getSourceControls();
+    const metaToken = await getMetaToken();
 
     // Carrega fontes conforme controles ativos
-    const sdrData = sourceControls.sdrEnabled ? getSdrData() : null;
-    const pipedriveData = sourceControls.pipedriveEnabled ? getPipedriveData() : null;
+    const sdrData = sourceControls.sdrEnabled ? await getSdrData() : null;
+    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
     const pipedriveMetrics = getPipedriveMetricsForRange(pipedriveData, range);
     const googleAdsData = sourceControls.googleAdsEnabled
-      ? getGoogleAdsDataForDateRange(range.start, range.end) || getGoogleAdsDataForPeriod(periodDays)
+      ? await getGoogleAdsDataForDateRange(range.start, range.end) || await getGoogleAdsDataForPeriod(periodDays)
       : null;
 
     // ────────────────────────────────────────────────
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       periodDays: range.periodDays,
     };
     const googleAdsPrevious = sourceControls.googleAdsEnabled
-      ? getGoogleAdsDataForDateRange(previousRange.start, previousRange.end) || getGoogleAdsDataForPeriod(periodDays)
+      ? await getGoogleAdsDataForDateRange(previousRange.start, previousRange.end) || await getGoogleAdsDataForPeriod(periodDays)
       : null;
 
     // ────────────────────────────────────────────────

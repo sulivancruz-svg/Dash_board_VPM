@@ -23,7 +23,7 @@ function isIsoDate(value: string | null): value is string {
 export async function GET() {
   try {
     return NextResponse.json({
-      batches: listHistoricalImportBatches(),
+      batches: await listHistoricalImportBatches(),
     });
   } catch (error) {
     console.error('Historical imports GET error:', error);
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const batch = saveHistoricalImportBatch({
+    const batch = await saveHistoricalImportBatch({
       source,
       referenceYear,
       periodStart,
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID do lote e obrigatorio' }, { status: 400 });
     }
 
-    const deletedBatch = deleteHistoricalImportBatch(batchId);
+    const deletedBatch = await deleteHistoricalImportBatch(batchId);
     if (!deletedBatch) {
       return NextResponse.json({ error: 'Lote nao encontrado' }, { status: 404 });
     }

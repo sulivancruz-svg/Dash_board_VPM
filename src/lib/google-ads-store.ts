@@ -1,7 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-const DATA_FILE = path.join(process.cwd(), '.google-ads-data.json');
+import { blobDel, blobGetJson, blobSetJson } from '@/lib/storage';
 
 const MONTH_PT: Record<number, string> = {
   1: 'janeiro',
@@ -225,20 +222,20 @@ function buildChannelBreakdown(campaigns: GoogleAdsCampaign[]) {
   return Array.from(breakdownMap.values()).sort((a, b) => b.spend - a.spend);
 }
 
-export function getGoogleAdsStoredData(): GoogleAdsStoredData | null {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return null;
-    }
-
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8')) as GoogleAdsStoredData;
-  } catch {
-    return null;
-  }
+export async function setGoogleAdsStoredData(data: GoogleAdsStoredData): Promise<void> {
+  await blobSetJson('google-ads-data', data);
 }
 
-export function getGoogleAdsDataForPeriod(periodDays?: number | null): GoogleAdsPeriodData | null {
-  const stored = getGoogleAdsStoredData();
+export async function clearGoogleAdsStoredData(): Promise<void> {
+  await blobDel('google-ads-data');
+}
+
+export async function getGoogleAdsStoredData(): Promise<GoogleAdsStoredData | null> {
+  return blobGetJson<GoogleAdsStoredData>('google-ads-data');
+}
+
+export async function getGoogleAdsDataForPeriod(periodDays?: number | null): Promise<GoogleAdsPeriodData | null> {
+  const stored = await getGoogleAdsStoredData();
 
   if (!stored) {
     return null;
@@ -280,8 +277,8 @@ export function getGoogleAdsDataForPeriod(periodDays?: number | null): GoogleAds
   };
 }
 
-export function getGoogleAdsDataForDateRange(start: string, end: string): GoogleAdsPeriodData | null {
-  const stored = getGoogleAdsStoredData();
+export async function getGoogleAdsDataForDateRange(start: string, end: string): Promise<GoogleAdsPeriodData | null> {
+  const stored = await getGoogleAdsStoredData();
 
   if (!stored) {
     return null;

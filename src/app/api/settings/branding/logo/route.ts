@@ -17,7 +17,7 @@ function getContentType(filePath: string) {
 
 export async function GET() {
   try {
-    const settings = getBrandingSettings();
+    const settings = await getBrandingSettings();
     if (!settings.logoPath) {
       return new NextResponse('Logo nao configurada', { status: 404 });
     }

@@ -1,7 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-const SOURCE_CONTROLS_FILE = path.join(process.cwd(), '.source-controls.json');
+import { kvGet, kvSet } from '@/lib/storage';
 
 export interface SourceControls {
   sdrEnabled: boolean;
@@ -15,14 +12,10 @@ const DEFAULT_SOURCE_CONTROLS: SourceControls = {
   googleAdsEnabled: true,
 };
 
-export function getSourceControls(): SourceControls {
+export async function getSourceControls(): Promise<SourceControls> {
   try {
-    if (!fs.existsSync(SOURCE_CONTROLS_FILE)) {
-      return DEFAULT_SOURCE_CONTROLS;
-    }
-
-    const parsed = JSON.parse(fs.readFileSync(SOURCE_CONTROLS_FILE, 'utf-8')) as Partial<SourceControls>;
-
+    const parsed = await kvGet<Partial<SourceControls>>('source-controls');
+    if (!parsed) return DEFAULT_SOURCE_CONTROLS;
     return {
       sdrEnabled: parsed.sdrEnabled ?? true,
       pipedriveEnabled: parsed.pipedriveEnabled ?? true,
@@ -34,19 +27,11 @@ export function getSourceControls(): SourceControls {
   }
 }
 
-export function setSourceControls(nextControls: Partial<SourceControls>): SourceControls {
-  const current = getSourceControls();
-  const merged: SourceControls = {
-    ...current,
-    ...nextControls,
-  };
-
-  try {
-    fs.writeFileSync(SOURCE_CONTROLS_FILE, JSON.stringify(merged, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Error saving source controls:', error);
-    throw error;
-  }
-
+export async function setSourceControls(
+  nextControls: Partial<SourceControls>,
+): Promise<SourceControls> {
+  const current = await getSourceControls();
+  const merged: SourceControls = { ...current, ...nextControls };
+  await kvSet('source-controls', merged);
   return merged;
 }

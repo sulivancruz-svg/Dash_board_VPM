@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { setSourceControls } from '@/lib/source-controls';
-import { getGoogleAdsDataForDateRange, getGoogleAdsDataForPeriod, GoogleAdsStoredData } from '@/lib/google-ads-store';
+import { getGoogleAdsDataForDateRange, getGoogleAdsDataForPeriod, setGoogleAdsStoredData, GoogleAdsStoredData } from '@/lib/google-ads-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export type GoogleAdsData = GoogleAdsStoredData;
-
-/**
- * Armazena dados do Google Ads no arquivo `.google-ads-data.json`
- */
-function saveGoogleAdsData(data: GoogleAdsData): void {
-  const dataPath = path.join(process.cwd(), '.google-ads-data.json');
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), 'utf-8');
-}
 
 /**
  * POST /api/imports/google-ads
@@ -109,9 +99,9 @@ export async function POST(req: NextRequest) {
       campaigns: normalizedCampaigns,
     };
 
-    // Salvar no arquivo
-    saveGoogleAdsData(googleAdsData);
-    setSourceControls({ googleAdsEnabled: true });
+    // Salvar no store
+    await setGoogleAdsStoredData(googleAdsData);
+    await setSourceControls({ googleAdsEnabled: true });
 
     return NextResponse.json({
       message: 'Dados do Google Ads importados com sucesso',
@@ -138,22 +128,13 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const dataPath = path.join(process.cwd(), '.google-ads-data.json');
-
-    if (!fs.existsSync(dataPath)) {
-      return NextResponse.json(
-        { error: 'Dados do Google Ads não encontrados' },
-        { status: 404 }
-      );
-    }
-
     const start = req.nextUrl.searchParams.get('start');
     const end = req.nextUrl.searchParams.get('end');
     const periodParam = req.nextUrl.searchParams.get('period');
     const periodDays = periodParam ? Number.parseInt(periodParam, 10) : null;
     const googleAdsData = start && end
-      ? getGoogleAdsDataForDateRange(start, end)
-      : getGoogleAdsDataForPeriod(periodDays);
+      ? await getGoogleAdsDataForDateRange(start, end)
+      : await getGoogleAdsDataForPeriod(periodDays);
 
     if (!googleAdsData) {
       return NextResponse.json(

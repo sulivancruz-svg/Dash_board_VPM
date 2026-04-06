@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
-  return NextResponse.json(getBrandingResponse());
+  return NextResponse.json(await getBrandingResponse());
 }
 
 export async function POST(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const logoFile = file instanceof File && file.size > 0 ? file : null;
     const logoBuffer = logoFile ? Buffer.from(await logoFile.arrayBuffer()) : null;
 
-    const settings = saveBrandingSettings({
+    const settings = await saveBrandingSettings({
       companyName,
       logoBuffer,
       logoFileName: logoFile?.name || null,
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: 'Identidade visual atualizada com sucesso',
-      ...getBrandingResponse(),
+      ...await getBrandingResponse(),
       updatedAt: settings.updatedAt,
     });
   } catch (error) {

@@ -12,17 +12,17 @@ export const revalidate = 0;
 
 export async function POST() {
   try {
-    const credentials = getPipedriveDirectCredentials();
+    const credentials = await getPipedriveDirectCredentials();
     if (!credentials) {
       return NextResponse.json({ error: 'Configure a conexao com o Pipedrive primeiro' }, { status: 400 });
     }
 
     const data = await syncPipedriveDirectData(credentials);
-    setPipedriveDirectData(data);
+    await setPipedriveDirectData(data);
 
-    const dashboardStore = getPipedriveData();
+    const dashboardStore = await getPipedriveData();
     if (dashboardStore?.mondeDeals?.length) {
-      setPipedriveData(buildPipedriveDashboardStore({
+      await setPipedriveData(buildPipedriveDashboardStore({
         updatedAt: data.updatedAt,
         mondeDeals: dashboardStore.mondeDeals,
         pipelineDeals: dashboardStore.pipelineDeals ?? [],

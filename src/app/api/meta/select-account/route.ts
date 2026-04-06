@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
     }
     // Usar o nome da conta de anúncio (ex: "Vai Pro Mundo Anúncios"), não o nome do usuário
-    setMetaToken(token, accountId, accountName || userName);
+    await setMetaToken(token, accountId, accountName || userName);
     return NextResponse.json({
       status: 'CONNECTED',
       accountId,

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   try {
     const period = req.nextUrl.searchParams.get('period') || '30';
     const datePreset = getPeriodPreset(period);
-    const metaToken = getMetaToken();
+    const metaToken = await getMetaToken();
 
     if (!metaToken?.token) {
       return NextResponse.json(

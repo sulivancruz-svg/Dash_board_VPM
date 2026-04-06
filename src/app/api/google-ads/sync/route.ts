@@ -3,9 +3,9 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { setSourceControls } from '@/lib/source-controls';
+import { setGoogleAdsStoredData } from '@/lib/google-ads-store';
 
 const CREDS_FILE = path.join(process.cwd(), '.google-ads-credentials.json');
-const DATA_FILE = path.join(process.cwd(), '.google-ads-data.json');
 const GOOGLE_ADS_API_VERSIONS = ['v23', 'v22', 'v21', 'v20', 'v19', 'v18'] as const;
 
 const MONTH_PT: Record<number, string> = {
@@ -446,8 +446,8 @@ export async function POST() {
       dailyCampaigns,
     };
 
-    fs.writeFileSync(DATA_FILE, JSON.stringify(googleAdsData, null, 2), 'utf-8');
-    setSourceControls({ googleAdsEnabled: true });
+    await setGoogleAdsStoredData(googleAdsData);
+    await setSourceControls({ googleAdsEnabled: true });
 
     return NextResponse.json({
       success: true,
