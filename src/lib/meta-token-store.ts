@@ -45,27 +45,39 @@ export async function setMetaToken(
 
 export async function getMetaToken(): Promise<MetaTokenStore | null> {
   const data = await kvGet<EncryptedTokenStore | LegacyTokenStore>('meta-token');
-  if (!data) return null;
+  if (data) {
+    try {
+      if (isEncryptedStore(data)) {
+        return {
+          token: decryptToken(data.encryptedToken, data.iv),
+          accountId: data.accountId,
+          accountName: data.accountName,
+        };
+      }
 
-  try {
-    if (isEncryptedStore(data)) {
-      return {
-        token: decryptToken(data.encryptedToken, data.iv),
-        accountId: data.accountId,
-        accountName: data.accountName,
-      };
+      const legacy = data as LegacyTokenStore;
+      if (legacy.token && legacy.accountId) {
+        // Migrate legacy plaintext storage to encrypted format
+        await setMetaToken(legacy.token, legacy.accountId, legacy.accountName);
+        return { token: legacy.token, accountId: legacy.accountId, accountName: legacy.accountName };
+      }
+    } catch (error) {
+      console.error('Error decoding meta token:', error);
     }
-
-    const legacy = data as LegacyTokenStore;
-    if (!legacy.token || !legacy.accountId) return null;
-
-    // Migrate legacy plaintext storage to encrypted format
-    await setMetaToken(legacy.token, legacy.accountId, legacy.accountName);
-    return { token: legacy.token, accountId: legacy.accountId, accountName: legacy.accountName };
-  } catch (error) {
-    console.error('Error decoding meta token:', error);
-    return null;
   }
+
+  // Fallback: variáveis de ambiente fixas no Vercel
+  const envToken = process.env.META_ACCESS_TOKEN;
+  const envAccountId = process.env.META_AD_ACCOUNT_ID;
+  if (envToken && envAccountId) {
+    return {
+      token: envToken,
+      accountId: envAccountId,
+      accountName: process.env.META_ACCOUNT_NAME || 'Vai Pro Mundo',
+    };
+  }
+
+  return null;
 }
 
 export async function clearMetaToken(): Promise<void> {

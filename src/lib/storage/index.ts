@@ -11,6 +11,15 @@ import path from 'path';
 
 const IS_KV = !!process.env.KV_REST_API_URL;
 const IS_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
+// Em produção Vercel sem KV/Blob, o filesystem raiz é read-only — usa /tmp como fallback
+const IS_VERCEL = !!process.env.VERCEL;
+const LOCAL_BASE = IS_VERCEL ? '/tmp' : process.cwd();
+function localFilePath(key: string): string {
+  return path.join(LOCAL_BASE, `.${key}.json`);
+}
+function localBlobPath(key: string): string {
+  return path.join(LOCAL_BASE, `${key}.json`);
+}
 
 /* ─────────────────────────────────────────── KV ─── */
 
@@ -20,7 +29,7 @@ export async function kvGet<T>(key: string): Promise<T | null> {
     const { kv } = await import('@vercel/kv');
     return await kv.get<T>(key);
   }
-  const file = path.join(process.cwd(), `.${key}.json`);
+  const file = localFilePath(key);
   try {
     if (fs.existsSync(file)) {
       return JSON.parse(fs.readFileSync(file, 'utf-8')) as T;
@@ -38,7 +47,7 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
     await kv.set(key, value);
     return;
   }
-  const file = path.join(process.cwd(), `.${key}.json`);
+  const file = localFilePath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
 
@@ -49,7 +58,7 @@ export async function kvDel(key: string): Promise<void> {
     await kv.del(key);
     return;
   }
-  const file = path.join(process.cwd(), `.${key}.json`);
+  const file = localFilePath(key);
   if (fs.existsSync(file)) fs.unlinkSync(file);
 }
 
@@ -65,7 +74,11 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
     const { blobs } = await list({ prefix: `${key}.json`, limit: 1 });
     if (blobs.length === 0) return null;
     try {
-      const res = await fetch(blobs[0].url, { cache: 'no-store' });
+      const fetchHeaders: Record<string, string> = {};
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        fetchHeaders['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+      }
+      const res = await fetch(blobs[0].url, { cache: 'no-store', headers: fetchHeaders });
       if (!res.ok) return null;
       return (await res.json()) as T;
     } catch (e) {
@@ -73,7 +86,7 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
       return null;
     }
   }
-  const file = path.join(process.cwd(), `.${key}.json`);
+  const file = localBlobPath(key);
   try {
     if (fs.existsSync(file)) {
       return JSON.parse(fs.readFileSync(file, 'utf-8')) as T;
@@ -94,13 +107,13 @@ export async function blobSetJson(key: string, value: unknown): Promise<void> {
       await del(blobs.map((b) => b.url));
     }
     await put(`${key}.json`, JSON.stringify(value), {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       contentType: 'application/json',
     } as Parameters<typeof put>[2]);
     return;
   }
-  const file = path.join(process.cwd(), `.${key}.json`);
+  const file = localBlobPath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
 
@@ -114,7 +127,7 @@ export async function blobDel(key: string): Promise<void> {
     }
     return;
   }
-  const file = path.join(process.cwd(), `.${key}.json`);
+  const file = localBlobPath(key);
   if (fs.existsSync(file)) fs.unlinkSync(file);
 }
 
@@ -130,16 +143,18 @@ export async function blobUploadFile(
   if (IS_BLOB) {
     const { put } = await import('@vercel/blob');
     const result = await put(blobPath, buffer, {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       contentType,
     } as Parameters<typeof put>[2]);
     return result.url;
   }
-  // Local dev: write to filesystem under public/ for images, or cwd() for data
-  const localPath = blobPath.startsWith('branding-assets/')
-    ? path.join(process.cwd(), 'public', blobPath)
-    : path.join(process.cwd(), 'historical-imports', blobPath.replace('historical-imports/', ''));
+  // Fallback: write to /tmp on Vercel (ephemeral) or local filesystem in dev
+  const localPath = IS_VERCEL
+    ? path.join('/tmp', blobPath.replace(/\//g, '-'))
+    : blobPath.startsWith('branding-assets/')
+      ? path.join(process.cwd(), 'public', blobPath)
+      : path.join(process.cwd(), 'historical-imports', blobPath.replace('historical-imports/', ''));
   fs.mkdirSync(path.dirname(localPath), { recursive: true });
   fs.writeFileSync(localPath, buffer);
   return `/${blobPath}`;
