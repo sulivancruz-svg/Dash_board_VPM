@@ -68,7 +68,11 @@ export async function getMetaToken(): Promise<MetaTokenStore | null> {
 
   // Fallback: variáveis de ambiente fixas no Vercel
   const envToken = process.env.META_ACCESS_TOKEN;
-  const envAccountId = process.env.META_AD_ACCOUNT_ID;
+  const rawAccountId = process.env.META_AD_ACCOUNT_ID || '';
+  // Meta exige formato act_XXXXX — adiciona prefixo se ausente
+  const envAccountId = rawAccountId && !rawAccountId.startsWith('act_')
+    ? `act_${rawAccountId}`
+    : rawAccountId;
   if (envToken && envAccountId) {
     return {
       token: envToken,

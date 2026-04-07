@@ -332,8 +332,14 @@ export async function GET(req: NextRequest) {
 
     const hardFailure = results.find((result) => result.data === null && result.error);
     if (hardFailure && !campaignResult.data && !adsetResult.data && !adResult.data) {
+      // Extrai mensagem legível do erro Meta (JSON ou texto simples)
+      let metaMsg = 'Erro ao consultar a Meta API para a conta selecionada.';
+      try {
+        const parsed = JSON.parse(hardFailure.error || '{}');
+        if (parsed?.error?.message) metaMsg = parsed.error.message;
+      } catch { /* usa mensagem padrão */ }
       return NextResponse.json(
-        { error: 'Erro ao consultar a Meta API para a conta selecionada.' },
+        { error: metaMsg, accountId: metaToken.accountId },
         { status: hardFailure.status || 500 },
       );
     }
