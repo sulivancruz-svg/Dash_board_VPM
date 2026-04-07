@@ -53,11 +53,12 @@ function persistState(nextState: DashboardDateRangeState) {
 }
 
 export function useDashboardDateRange() {
-  const [state, setState] = useState<DashboardDateRangeState>(DEFAULT_STATE);
+  const [state, setState] = useState<DashboardDateRangeState>(() => {
+    if (typeof window === 'undefined') return DEFAULT_STATE;
+    return readStoredState();
+  });
 
   useEffect(() => {
-    setState(readStoredState());
-
     const syncFromStorage = () => setState(readStoredState());
     const syncFromCustomEvent = (event: Event) => {
       const customEvent = event as CustomEvent<DashboardDateRangeState>;
