@@ -68,12 +68,20 @@ export function useDashboardDateRange() {
       }
     };
 
+    const syncOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        setState(readStoredState());
+      }
+    };
+
     window.addEventListener('storage', syncFromStorage);
     window.addEventListener(EVENT_NAME, syncFromCustomEvent as EventListener);
+    document.addEventListener('visibilitychange', syncOnFocus);
 
     return () => {
       window.removeEventListener('storage', syncFromStorage);
       window.removeEventListener(EVENT_NAME, syncFromCustomEvent as EventListener);
+      document.removeEventListener('visibilitychange', syncOnFocus);
     };
   }, []);
 
