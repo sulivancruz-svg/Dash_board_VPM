@@ -26,3 +26,6 @@ test-results/
 dist/
 build/
 tsconfig.tsbuildinfo
+
+.vercel
+.env*.local
