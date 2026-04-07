@@ -683,7 +683,7 @@ export default function PaidMediaPage() {
               </div>
               <div className="flex gap-6">
                 <div className="text-right">
-                  <p className="text-xs font-medium text-blue-600">Receita Total</p>
+                  <p className="text-xs font-medium text-blue-600">Receita (Canais Pagos)</p>
                   <p className="text-xl font-bold text-blue-900">{fmt(totalReceita, 'currency')}</p>
                 </div>
                 <div className="text-right">
