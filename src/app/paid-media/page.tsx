@@ -731,8 +731,6 @@ export default function PaidMediaPage() {
                 </div>
               */}
 
-              <MetaCreativePanel ads={metaData.ads || []} />
-
               <div className="flex gap-2 border-b border-slate-200">
                 {[
                   { key: 'campaigns', label: `Campanhas (${metaData.campaigns.length})` },
