@@ -360,13 +360,13 @@ export default function OverviewPage() {
                     <span className="text-sm font-semibold text-red-500">{fmt(data.pipedrive.totalLost)}</span>
                   </div>
                 )}
-                {/* Ciclo médio */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <span className="text-xs text-slate-500">Ciclo médio de venda</span>
-                  <span className="text-sm font-bold text-violet-600">
-                    {data?.kpis.avgDaysToWin != null ? `${data.kpis.avgDaysToWin} dias` : '—'}
-                  </span>
-                </div>
+                {/* Ciclo médio — exibido no card dedicado abaixo */}
+                {data?.kpis.avgDaysToWin == null && (
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <span className="text-xs text-slate-500">Ciclo médio de venda</span>
+                    <span className="text-sm font-bold text-slate-300">—</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -432,6 +432,67 @@ export default function OverviewPage() {
               </div>
             </div>
           </div>
+
+          {/* ── Card Tempo Médio de Ganho ── */}
+          {data && data.kpis.avgDaysToWin != null && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-violet-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tempo Médio de Ganho</h2>
+                    <p className="text-[10px] text-slate-400">Criação no Pipe → Venda no Monde</p>
+                  </div>
+                </div>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  data.kpis.avgDaysToWin <= 30
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : data.kpis.avgDaysToWin <= 60
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-red-100 text-red-600'
+                }`}>
+                  {data.kpis.avgDaysToWin <= 30 ? '✓ Ciclo curto' : data.kpis.avgDaysToWin <= 60 ? '⚠ Ciclo médio' : '↑ Ciclo longo'}
+                </span>
+              </div>
+
+              <div className="flex items-end gap-6">
+                {/* Número principal */}
+                <div>
+                  <p className="text-5xl font-bold text-violet-600">{data.kpis.avgDaysToWin}</p>
+                  <p className="text-sm text-slate-500 mt-1">dias em média</p>
+                </div>
+
+                {/* Barra de contexto */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                    <span>0d</span><span>30d</span><span>60d</span><span>90d+</span>
+                  </div>
+                  <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="absolute inset-0 flex">
+                      <div className="h-full bg-emerald-200 flex-1" style={{ maxWidth: '33.3%' }} />
+                      <div className="h-full bg-amber-200 flex-1" style={{ maxWidth: '33.3%' }} />
+                      <div className="h-full bg-red-200 flex-1" />
+                    </div>
+                    <div
+                      className="absolute top-0 h-full w-1.5 bg-violet-600 rounded-full shadow"
+                      style={{ left: `${Math.min((data.kpis.avgDaysToWin / 90) * 100, 97)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-emerald-600 font-medium">Rápido</span>
+                    <span className="text-amber-600 font-medium">Médio</span>
+                    <span className="text-red-500 font-medium">Longo</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-400 mt-4 border-t border-slate-100 pt-3">
+                Calculado com base nos deals com correspondência entre Pipedrive (data de criação) e Monde (data da venda) no período selecionado.
+              </p>
+            </div>
+          )}
 
           {/* ── Receita por Origem (Attribution Breakdown) ── */}
           {data && data.pipedrive.byAttribution?.length > 0 && (
