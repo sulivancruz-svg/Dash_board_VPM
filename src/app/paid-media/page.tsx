@@ -293,64 +293,6 @@ function MetaObjectivePanel({ items, totalSpend }: { items: CampaignsData['objec
   );
 }
 
-function MetaCreativePanel({ ads }: { ads: any[] }) {
-  if (!ads.length) return null;
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Top criativos ativos da Meta</h2>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-100">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Imagem</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Anuncio</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Criativo</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Objetivo</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Campanha</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Invest.</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CTR</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Resultados</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {ads.slice(0, 12).map((ad: any) => (
-              <tr key={ad.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  {ad.creativeImageUrl ? (
-                    <img
-                      src={ad.creativeImageUrl}
-                      alt={ad.creativeName || ad.name || 'Criativo'}
-                      className="h-12 w-12 rounded-lg object-cover border border-slate-200"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 rounded-lg bg-slate-100 border border-slate-200" />
-                  )}
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-800 max-w-[220px] truncate" title={ad.name}>{ad.name}</td>
-                <td className="px-4 py-3 text-xs text-slate-500 max-w-[260px]">
-                  <p className="truncate font-medium text-slate-700" title={ad.creativeName || ad.name}>{ad.creativeName || ad.name || '-'}</p>
-                  {ad.creativeTitle && <p className="truncate text-slate-400" title={ad.creativeTitle}>{ad.creativeTitle}</p>}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="inline-flex rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
-                    {ad.strategicObjective || ad.objectiveLabel || 'Nao classificado'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-slate-500 max-w-[220px] truncate" title={ad.campaignName}>{ad.campaignName || '-'}</td>
-                <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{fmt(ad.spend, 'currency')}</td>
-                <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{fmt(ad.ctr || 0, 'pct')}</td>
-                <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{fmt(ad.results || 0)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 // ──────────────────────────────────────────────────
 // Painel Google Ads (dados importados via CSV)
@@ -485,49 +427,6 @@ function GoogleAdsPanel({ data }: { data: GoogleAdsData }) {
                   <td className="px-4 py-3 text-xs text-slate-400">100%</td>
                 </tr>
               </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {campaigns.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Campanhas do Google Ads</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Campanha</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Investimento</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">% verba</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Impressoes</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliques</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Conversoes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {campaigns.map((campaign) => {
-                  const spendPct = data.totalSpend > 0 ? (campaign.spend / data.totalSpend) * 100 : 0;
-                  return (
-                    <tr key={campaign.campaignId} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-800 max-w-[320px] truncate" title={campaign.campaignName}>
-                        {campaign.campaignName}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                        {getChannelLabel(campaign.channelType, campaign.channelSubType)}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-orange-600 whitespace-nowrap">{fmt(campaign.spend, 'currency')}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{spendPct.toFixed(1)}%</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{fmt(campaign.impressions)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{fmt(campaign.clicks)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{fmt(campaign.conversions, 'decimal')}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
             </table>
           </div>
         </div>
