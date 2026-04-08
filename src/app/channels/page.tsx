@@ -285,9 +285,7 @@ export default function ChannelsPage() {
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-orange-900">Google Ads</h3>
                     <span className="text-xs font-semibold text-orange-700">
-                      {mediaData.googleAds.connected
-                        ? (mediaData.googleAds.source === 'api' ? 'API' : 'Importado')
-                        : 'Nao importado'}
+                      {mediaData.googleAds.connected ? 'Conectado' : 'Nao conectado'}
                     </span>
                   </div>
                   <p className="text-2xl font-bold text-orange-900">{fmt(mediaData.googleAds.investimento, 'currency')}</p>

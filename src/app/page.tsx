@@ -261,7 +261,7 @@ export default function OverviewPage() {
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Retorno de Mídia</h2>
                 <div className="flex items-center gap-1.5">
                   {data?.meta.connected && <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" title="Meta conectado" />}
-                  {data?.googleAds.connected && <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" title="Google importado" />}
+                  {data?.googleAds.connected && <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" title="Google conectado" />}
                 </div>
               </div>
 
