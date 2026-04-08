@@ -1,4 +1,4 @@
-import { blobGetJson, blobSetJson, kvGet, kvSet } from '@/lib/storage';
+import { blobGetJson, blobSetJson } from '@/lib/storage';
 
 export interface ChannelSales {
   canal: string;
@@ -56,11 +56,11 @@ export interface PipedriveStore {
 /* ── SDR (small → KV) ─────────────────────────────── */
 
 export async function setSdrData(data: SdrStore): Promise<void> {
-  await kvSet('sdr-data', data);
+  await blobSetJson('sdr-data', data);
 }
 
 export async function getSdrData(): Promise<SdrStore | null> {
-  return kvGet<SdrStore>('sdr-data');
+  return blobGetJson<SdrStore>('sdr-data');
 }
 
 /* ── Pipedrive Monde (large → Blob) ───────────────── */

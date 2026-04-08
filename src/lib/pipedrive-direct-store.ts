@@ -1,4 +1,4 @@
-import { blobDel, blobGetJson, blobSetJson, kvDel, kvGet, kvSet } from '@/lib/storage';
+import { blobDel, blobGetJson, blobSetJson } from '@/lib/storage';
 import { decryptToken, encryptToken } from '@/lib/crypto';
 
 interface EncryptedConfigStore {
@@ -69,7 +69,7 @@ export interface PipedriveDirectData {
 }
 
 export async function getPipedriveDirectCredentials(): Promise<PipedriveDirectCredentials | null> {
-  const store = await kvGet<EncryptedConfigStore>('pipedrive-direct-config');
+  const store = await blobGetJson<EncryptedConfigStore>('pipedrive-direct-config');
   if (store?.encryptedToken && store.iv && store.companyDomain) {
     try {
       return {
@@ -116,11 +116,11 @@ export async function setPipedriveDirectCredentials(input: {
     connectedAt: now,
     lastValidatedAt: now,
   };
-  await kvSet('pipedrive-direct-config', payload);
+  await blobSetJson('pipedrive-direct-config', payload);
 }
 
 export async function clearPipedriveDirectCredentials(): Promise<void> {
-  await kvDel('pipedrive-direct-config');
+  await blobDel('pipedrive-direct-config');
 }
 
 export async function getPipedriveDirectData(): Promise<PipedriveDirectData | null> {

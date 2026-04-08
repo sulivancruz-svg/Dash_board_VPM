@@ -1,4 +1,4 @@
-import { kvDel, kvGet, kvSet } from '@/lib/storage';
+import { blobDel, blobGetJson, blobSetJson } from '@/lib/storage';
 import { decryptToken, encryptToken } from '@/lib/crypto';
 
 interface EncryptedTokenStore {
@@ -40,11 +40,11 @@ export async function setMetaToken(
     accountId,
     accountName,
   };
-  await kvSet('meta-token', data);
+  await blobSetJson('meta-token', data);
 }
 
 export async function getMetaToken(): Promise<MetaTokenStore | null> {
-  const data = await kvGet<EncryptedTokenStore | LegacyTokenStore>('meta-token');
+  const data = await blobGetJson<EncryptedTokenStore | LegacyTokenStore>('meta-token');
   if (data) {
     try {
       if (isEncryptedStore(data)) {
@@ -85,5 +85,5 @@ export async function getMetaToken(): Promise<MetaTokenStore | null> {
 }
 
 export async function clearMetaToken(): Promise<void> {
-  await kvDel('meta-token');
+  await blobDel('meta-token');
 }

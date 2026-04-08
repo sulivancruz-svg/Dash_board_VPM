@@ -1,4 +1,4 @@
-import { blobDeleteFile, blobUploadFile, kvGet, kvSet } from '@/lib/storage';
+import { blobDeleteFile, blobGetJson, blobSetJson, blobUploadFile } from '@/lib/storage';
 
 export interface BrandingSettings {
   companyName: string;
@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: BrandingSettings = {
 
 async function readStore(): Promise<BrandingSettings> {
   try {
-    const parsed = await kvGet<Partial<BrandingSettings>>('branding-settings');
+    const parsed = await blobGetJson<Partial<BrandingSettings>>('branding-settings');
     if (!parsed) return DEFAULT_SETTINGS;
     return {
       companyName: parsed.companyName || DEFAULT_SETTINGS.companyName,
@@ -65,7 +65,7 @@ export async function saveBrandingSettings(input: {
     updatedAt: new Date().toISOString(),
   };
 
-  await kvSet('branding-settings', nextSettings);
+  await blobSetJson('branding-settings', nextSettings);
   return nextSettings;
 }
 

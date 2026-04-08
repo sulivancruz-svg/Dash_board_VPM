@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { blobDeleteFile, blobUploadFile, kvGet, kvSet } from '@/lib/storage';
+import { blobDeleteFile, blobGetJson, blobSetJson, blobUploadFile } from '@/lib/storage';
 
 export type HistoricalImportSource = 'sdr' | 'pipedrive_monde' | 'google_ads' | 'meta_ads';
 
@@ -28,12 +28,12 @@ function sanitizeFileName(fileName: string): string {
 }
 
 async function readStore(): Promise<HistoricalImportsStore> {
-  const store = await kvGet<HistoricalImportsStore>('historical-imports');
+  const store = await blobGetJson<HistoricalImportsStore>('historical-imports');
   return store ?? { batches: [] };
 }
 
 async function writeStore(store: HistoricalImportsStore): Promise<void> {
-  await kvSet('historical-imports', store);
+  await blobSetJson('historical-imports', store);
 }
 
 export async function listHistoricalImportBatches(): Promise<HistoricalImportBatch[]> {

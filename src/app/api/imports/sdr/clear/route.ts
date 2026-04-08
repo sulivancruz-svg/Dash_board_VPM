@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { kvDel } from '@/lib/storage';
+import { blobDel } from '@/lib/storage';
 
 export async function POST() {
   try {
-    await kvDel('sdr-data');
+    await blobDel('sdr-data');
 
     return NextResponse.json({
       message: 'Dados SDR removidos com sucesso',

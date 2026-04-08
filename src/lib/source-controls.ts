@@ -1,4 +1,4 @@
-import { kvGet, kvSet } from '@/lib/storage';
+import { blobGetJson, blobSetJson } from '@/lib/storage';
 
 export interface SourceControls {
   sdrEnabled: boolean;
@@ -14,7 +14,7 @@ const DEFAULT_SOURCE_CONTROLS: SourceControls = {
 
 export async function getSourceControls(): Promise<SourceControls> {
   try {
-    const parsed = await kvGet<Partial<SourceControls>>('source-controls');
+    const parsed = await blobGetJson<Partial<SourceControls>>('source-controls');
     if (!parsed) return DEFAULT_SOURCE_CONTROLS;
     return {
       sdrEnabled: parsed.sdrEnabled ?? true,
@@ -32,6 +32,6 @@ export async function setSourceControls(
 ): Promise<SourceControls> {
   const current = await getSourceControls();
   const merged: SourceControls = { ...current, ...nextControls };
-  await kvSet('source-controls', merged);
+  await blobSetJson('source-controls', merged);
   return merged;
 }
