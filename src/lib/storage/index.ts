@@ -70,19 +70,21 @@ export async function kvDel(key: string): Promise<void> {
  */
 export async function blobGetJson<T>(key: string): Promise<T | null> {
   if (IS_BLOB) {
-    const { list } = await import('@vercel/blob');
-    const { blobs } = await list({ prefix: `${key}.json`, limit: 1 });
-    if (blobs.length === 0) return null;
     try {
-      const fetchHeaders: Record<string, string> = {};
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        fetchHeaders['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-      }
-      const res = await fetch(blobs[0].url, { cache: 'no-store', headers: fetchHeaders });
+      const { list } = await import('@vercel/blob');
+      const result = await list({ prefix: `${key}.json`, limit: 1 });
+      const blobs = result?.blobs ?? [];
+      if (blobs.length === 0) return null;
+      // Use downloadUrl for private blobs (includes auth signature); fall back to url
+      const fetchUrl = (blobs[0] as { downloadUrl?: string; url: string }).downloadUrl || blobs[0].url;
+      const fetchHeaders: Record<string, string> = {
+        Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+      };
+      const res = await fetch(fetchUrl, { cache: 'no-store', headers: fetchHeaders });
       if (!res.ok) return null;
       return (await res.json()) as T;
     } catch (e) {
-      console.error(`[storage] blobGetJson(${key}) fetch error:`, e);
+      console.error(`[storage] blobGetJson(${key}) error:`, e);
       return null;
     }
   }

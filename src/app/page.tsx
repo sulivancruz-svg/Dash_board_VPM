@@ -159,7 +159,7 @@ export default function OverviewPage() {
     fetch(`/api/data/overview?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
       .then(r => r.json())
       .then((overviewPayload) => {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && !overviewPayload?.error) {
           setData(overviewPayload);
         }
       })

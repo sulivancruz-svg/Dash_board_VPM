@@ -296,7 +296,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Overview error:', error);
+    console.error('Overview error:', error instanceof Error ? error.stack || error.message : String(error));
     return NextResponse.json({ error: 'Erro ao buscar visão geral' }, { status: 500 });
   }
 }
