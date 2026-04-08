@@ -459,8 +459,6 @@ export default function PaidMediaPage() {
   const [googleLoading, setGoogleLoading] = useState(true);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
-  const [activeView, setActiveView] = useState<'campaigns' | 'adsets' | 'ads'>('campaigns');
-
   const [paidChannels, setPaidChannels] = useState<Array<{
     canal: string; vendas: number; receita: number; ticket: number; receitaPct: number; attribution?: string;
   }>>([]);
@@ -731,22 +729,6 @@ export default function PaidMediaPage() {
                 </div>
               */}
 
-              <div className="flex gap-2 border-b border-slate-200">
-                {[
-                  { key: 'campaigns', label: `Campanhas (${metaData.campaigns.length})` },
-                  { key: 'adsets', label: `Conjuntos (${metaData.adsets.length})` },
-                  { key: 'ads', label: `Anuncios (${metaData.ads.length})` },
-                ].map(tab => (
-                  <button key={tab.key} onClick={() => setActiveView(tab.key as any)}
-                    className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${activeView === tab.key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {activeView === 'campaigns' && <CampaignsTable campaigns={metaData.campaigns} />}
-              {activeView === 'adsets' && <AdsTable ads={metaData.adsets} title="Conjuntos de Anuncios" />}
-              {activeView === 'ads' && <AdsTable ads={metaData.ads} title="Anuncios / Criativos" />}
             </>
           ) : null}
         </>
