@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
+import { getGoogleAdsCredentials } from '@/lib/google-ads-credentials-store';
 import { setSourceControls } from '@/lib/source-controls';
 import { setGoogleAdsStoredData } from '@/lib/google-ads-store';
 
-const CREDS_FILE = path.join(process.cwd(), '.google-ads-credentials.json');
 const GOOGLE_ADS_API_VERSIONS = ['v23', 'v22', 'v21', 'v20', 'v19', 'v18'] as const;
 
 const MONTH_PT: Record<number, string> = {
@@ -22,15 +20,6 @@ const MONTH_PT: Record<number, string> = {
   11: 'novembro',
   12: 'dezembro',
 };
-
-interface GoogleAdsCredentials {
-  serviceAccountEmail: string;
-  privateKey: string;
-  privateKeyId?: string;
-  developerToken: string;
-  customerId: string;
-  managerCustomerId?: string;
-}
 
 interface GaqlRow {
   campaign?: {
@@ -209,14 +198,14 @@ async function runGaqlQuery(
 
 export async function POST() {
   try {
-    if (!fs.existsSync(CREDS_FILE)) {
+    const creds = await getGoogleAdsCredentials();
+    if (!creds) {
       return NextResponse.json(
         { error: 'Conta de servico nao configurada. Configure as credenciais primeiro.' },
         { status: 400 },
       );
     }
 
-    const creds = JSON.parse(fs.readFileSync(CREDS_FILE, 'utf-8')) as GoogleAdsCredentials;
     const {
       serviceAccountEmail,
       privateKey,
@@ -471,7 +460,6 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    configured: fs.existsSync(CREDS_FILE),
-  });
+  const creds = await getGoogleAdsCredentials();
+  return NextResponse.json({ configured: !!creds });
 }

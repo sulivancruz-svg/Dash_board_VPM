@@ -70,20 +70,34 @@ export interface PipedriveDirectData {
 
 export async function getPipedriveDirectCredentials(): Promise<PipedriveDirectCredentials | null> {
   const store = await kvGet<EncryptedConfigStore>('pipedrive-direct-config');
-  if (!store?.encryptedToken || !store.iv || !store.companyDomain) return null;
-
-  try {
-    return {
-      apiToken: decryptToken(store.encryptedToken, store.iv),
-      companyName: store.companyName,
-      companyDomain: store.companyDomain,
-      connectedAt: store.connectedAt,
-      lastValidatedAt: store.lastValidatedAt,
-    };
-  } catch (error) {
-    console.error('Error decoding Pipedrive direct token:', error);
-    return null;
+  if (store?.encryptedToken && store.iv && store.companyDomain) {
+    try {
+      return {
+        apiToken: decryptToken(store.encryptedToken, store.iv),
+        companyName: store.companyName,
+        companyDomain: store.companyDomain,
+        connectedAt: store.connectedAt,
+        lastValidatedAt: store.lastValidatedAt,
+      };
+    } catch (error) {
+      console.error('Error decoding Pipedrive direct token:', error);
+    }
   }
+
+  // Fallback: variáveis de ambiente fixas no Vercel
+  const envToken = process.env.PIPEDRIVE_API_TOKEN;
+  const envDomain = process.env.PIPEDRIVE_COMPANY_DOMAIN;
+  if (envToken && envDomain) {
+    return {
+      apiToken: envToken,
+      companyName: 'Vai Pro Mundo',
+      companyDomain: envDomain,
+      connectedAt: '',
+      lastValidatedAt: '',
+    };
+  }
+
+  return null;
 }
 
 export async function setPipedriveDirectCredentials(input: {
@@ -110,7 +124,7 @@ export async function clearPipedriveDirectCredentials(): Promise<void> {
 }
 
 export async function getPipedriveDirectData(): Promise<PipedriveDirectData | null> {
-  return blobGetJson<PipedriveDirectData>('pipedrive-direct-data');
+  return await blobGetJson<PipedriveDirectData>('pipedrive-direct-data');
 }
 
 export async function setPipedriveDirectData(data: PipedriveDirectData): Promise<void> {

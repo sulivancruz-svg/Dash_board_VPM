@@ -157,13 +157,13 @@ export default function FunnelPage() {
   }, [activePeriod, dateRange.end, dateRange.start]);
 
 
-  const totalLeads         = data?.summary.totalLeads || 0;
-  const totalLost          = data?.summary.totalLost || 0;
-  const totalQualificados  = data?.summary.totalQualified || 0;
-  const totalVendas        = data?.summary.totalVendas || 0;
-  const totalReceita       = data?.summary.totalReceita || 0;
-  const receitaMidiaPaga   = data?.summary.receitaMidiaPaga || 0;
-  const vendasMidiaPaga    = data?.summary.vendasMidiaPaga || 0;
+  const totalLeads         = data?.summary?.totalLeads || 0;
+  const totalLost          = data?.summary?.totalLost || 0;
+  const totalQualificados  = data?.summary?.totalQualified || 0;
+  const totalVendas        = data?.summary?.totalVendas || 0;
+  const totalReceita       = data?.summary?.totalReceita || 0;
+  const receitaMidiaPaga   = data?.summary?.receitaMidiaPaga || 0;
+  const vendasMidiaPaga    = data?.summary?.vendasMidiaPaga || 0;
 
   const convLQ    = totalLeads        > 0 && totalQualificados > 0 ? (totalQualificados / totalLeads) * 100 : null;
   const convQV    = totalQualificados > 0 && totalVendas       > 0 ? (totalVendas / totalQualificados) * 100 : null;
@@ -277,7 +277,7 @@ export default function FunnelPage() {
               <FunnelStep
                 label="Receita Total"
                 value={fmt(totalReceita, 'currency')}
-                sub={`ticket: ${fmt(data.summary.ticketMedio, 'currency')}`}
+                sub={`ticket: ${fmt(data?.summary?.ticketMedio, 'currency')}`}
                 color="bg-teal-600 text-white"
                 source="Monde"
               />
@@ -427,12 +427,12 @@ export default function FunnelPage() {
                   <tr>
                     <td className="px-4 py-3 text-sm font-bold text-slate-700">Total</td>
                     <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{totalLeads > 0 ? fmt(totalLeads) : EMPTY_VALUE}</td>
-                    <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{data.summary.totalQualified > 0 ? fmt(data.summary.totalQualified) : EMPTY_VALUE}</td>
+                    <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{data?.summary?.totalQualified > 0 ? fmt(data?.summary?.totalQualified) : EMPTY_VALUE}</td>
                     <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(totalVendas)}</td>
                     <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">100%</td>
                     <td className="px-4 py-3 text-sm font-bold text-emerald-700 text-right">{fmt(totalReceita, 'currency')}</td>
                     <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">100%</td>
-                    <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(data.summary.ticketMedio, 'currency')}</td>
+                    <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(data?.summary?.ticketMedio, 'currency')}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -485,11 +485,11 @@ export default function FunnelPage() {
                     <tr>
                       <td className="px-4 py-3 text-sm font-bold text-slate-700">Total</td>
                       <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(totalLeads)}</td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(data.summary.totalQualified)}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(data?.summary?.totalQualified)}</td>
                       <td className="px-4 py-3 text-right">
                         {convLQ !== null ? <ConvBadge value={convLQ} thresholds={[10, 20]} /> : <span className="text-sm text-slate-300">Ã¢â‚¬â€</span>}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(data.summary.totalQualified > 0 ? months.reduce((s, m) => s + m.sales, 0) : 0)}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-700 text-right">{fmt(data?.summary?.totalQualified > 0 ? months.reduce((s, m) => s + m.sales, 0) : 0)}</td>
                       <td className="px-4 py-3 text-right">
                         {convQV !== null ? <ConvBadge value={convQV} thresholds={[10, 20]} /> : <span className="text-sm text-slate-300">Ã¢â‚¬â€</span>}
                       </td>

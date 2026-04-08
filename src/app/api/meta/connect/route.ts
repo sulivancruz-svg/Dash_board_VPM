@@ -6,6 +6,19 @@ export async function GET() {
   if (!token) {
     return NextResponse.json({ connected: false });
   }
+
+  // Valida se o token ainda é válido na Meta API
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${token.token}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      return NextResponse.json({ connected: false, expired: true, accountId: token.accountId, accountName: token.accountName });
+    }
+  } catch {
+    // Em caso de erro de rede, assume conectado para não quebrar o UX
+  }
+
   return NextResponse.json({ connected: true, accountId: token.accountId, accountName: token.accountName });
 }
 

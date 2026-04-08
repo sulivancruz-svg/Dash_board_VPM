@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const CREDS_FILE = path.join(process.cwd(), '.google-ads-credentials.json');
-
-export interface GoogleAdsCredentials {
-  serviceAccountEmail: string;
-  privateKey: string;
-  privateKeyId?: string;
-  developerToken: string;
-  customerId: string;
-  managerCustomerId?: string;
-  configuredAt: string;
-}
+import {
+  getGoogleAdsCredentials,
+  setGoogleAdsCredentials,
+  deleteGoogleAdsCredentials,
+  type GoogleAdsCredentials,
+} from '@/lib/google-ads-credentials-store';
 
 /**
  * GET /api/google-ads/credentials
@@ -20,10 +12,10 @@ export interface GoogleAdsCredentials {
  */
 export async function GET() {
   try {
-    if (!fs.existsSync(CREDS_FILE)) {
+    const creds = await getGoogleAdsCredentials();
+    if (!creds) {
       return NextResponse.json({ configured: false });
     }
-    const creds = JSON.parse(fs.readFileSync(CREDS_FILE, 'utf-8')) as GoogleAdsCredentials;
     return NextResponse.json({
       configured: true,
       serviceAccountEmail: creds.serviceAccountEmail,
@@ -89,7 +81,7 @@ export async function POST(req: NextRequest) {
       configuredAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(CREDS_FILE, JSON.stringify(creds, null, 2), 'utf-8');
+    await setGoogleAdsCredentials(creds);
 
     return NextResponse.json({
       success: true,
@@ -109,9 +101,7 @@ export async function POST(req: NextRequest) {
  */
 export async function DELETE() {
   try {
-    if (fs.existsSync(CREDS_FILE)) {
-      fs.unlinkSync(CREDS_FILE);
-    }
+    await deleteGoogleAdsCredentials();
     return NextResponse.json({ success: true, message: 'Credenciais removidas' });
   } catch {
     return NextResponse.json({ error: 'Erro ao remover credenciais' }, { status: 500 });
