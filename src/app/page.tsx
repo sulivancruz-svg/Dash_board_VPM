@@ -494,52 +494,6 @@ export default function OverviewPage() {
             </div>
           )}
 
-          {/* ── Receita por Origem (Attribution Breakdown) ── */}
-          {data && data.pipedrive.byAttribution?.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">
-                  Receita por Origem — Monde
-                </h2>
-                <span className="text-xs text-slate-400">
-                  ROAS usa <strong className="text-blue-600">Mídia Paga</strong>; Custo por Oportunidade usa <strong className="text-emerald-600">todas as oportunidades do Pipedrive</strong>
-                </span>
-              </div>
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                {data.pipedrive.byAttribution.map(group => {
-                  const COLORS: Record<string, { badge: string; border: string; bg: string; bar: string }> = {
-                    PAID_MEDIA:         { badge: 'bg-blue-100 text-blue-700',    border: 'border-blue-200',   bg: 'bg-blue-50',    bar: 'bg-blue-500' },
-                    ORGANIC_COMMERCIAL: { badge: 'bg-amber-100 text-amber-700',  border: 'border-amber-200',  bg: 'bg-amber-50',   bar: 'bg-amber-500' },
-                    BRAND_BASE:         { badge: 'bg-violet-100 text-violet-700',border: 'border-violet-200', bg: 'bg-violet-50',  bar: 'bg-violet-500' },
-                    UNKNOWN:            { badge: 'bg-slate-100 text-slate-500',  border: 'border-slate-200',  bg: 'bg-slate-50',   bar: 'bg-slate-400' },
-                  };
-                  const style = COLORS[group.attribution] || COLORS.UNKNOWN;
-                  return (
-                    <div key={group.attribution} className={`rounded-xl border p-4 ${style.border} ${style.bg}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full ${style.badge}`}>{group.label}</span>
-                        {group.usedForRoi && (
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">ROAS</span>
-                        )}
-                      </div>
-                      <p className="text-xl font-bold text-slate-900">{fmt(group.receita, 'currency')}</p>
-                      <p className="text-xs text-slate-500 mb-2">{fmt(group.receitaPct, 'pct')} da receita total</p>
-                      <p className="text-xs text-slate-500">{fmt(group.vendas)} vendas</p>
-                      <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
-                        <div className={`h-full ${style.bar} rounded-full`} style={{ width: `${Math.min(group.receitaPct, 100)}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-slate-400 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
-                <strong className="text-amber-700">Orgânico Comercial</strong> (Indicação, Networking, Prospecção) e{' '}
-                <strong className="text-amber-700">Branding/Base</strong> (Espontaneamente) são excluídos do ROI pois
-                não têm custo de mídia identificável — incluí-los inflacionaria artificialmente o ROAS.
-              </p>
-            </div>
-          )}
-
           {/* ── Canais de receita (Pipe Monde) ── */}
           {data && data.pipedrive.channels.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
