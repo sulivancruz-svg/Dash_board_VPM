@@ -221,8 +221,12 @@ export async function GET(req: NextRequest) {
         ? Math.round((receitaMidiaPaga / totalInvestimentoPrevious) * 100) / 100
         : null;
 
-    // Custo por Oportunidade (CPL) = investimento / todas as oportunidades (leads) do Pipedrive
-    const totalLeadsForCpl = pipedriveMetrics?.totalLeads || sdrData?.totalLeads || 0;
+    // Custo por Oportunidade (CPL) = investimento / leads de mídia paga (Google + Redes Sociais)
+    // Apenas canais com atribuição PAID_MEDIA entram no denominador
+    const leadsFromPaidMedia = (pipedriveMetrics?.channels || [])
+      .filter(c => attributeChannel(c.canal) === 'PAID_MEDIA')
+      .reduce((sum, c) => sum + (c.leads || 0), 0);
+    const totalLeadsForCpl = leadsFromPaidMedia || pipedriveMetrics?.totalLeads || sdrData?.totalLeads || 0;
     const cpl = totalLeadsForCpl > 0 && totalInvestimento > 0
       ? Math.round(totalInvestimento / totalLeadsForCpl)
       : null;
