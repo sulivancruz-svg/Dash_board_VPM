@@ -249,6 +249,7 @@ export async function GET(req: NextRequest) {
       googleAds: {
         connected: hasGoogleData,
         accountName: googleAdsData?.accountName || null,
+        source: googleAdsData?.source || null,
         investimento: Math.round(googleSpend * 100) / 100,
         impressions: googleImpressions,
         clicks: googleClicks,
