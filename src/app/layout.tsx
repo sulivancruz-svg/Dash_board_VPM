@@ -14,6 +14,7 @@ const navItems = [
   { href: '/pipedrive-direct', label: 'Pipedrive Direto', icon: 'PD' },
   { href: '/funnel', label: 'Funil Comercial', icon: 'FC' },
   { href: '/channels', label: 'Canais e Receita', icon: 'CR' },
+  { href: '/intelligence', label: 'Inteligencia', icon: '✦' },
   { href: '/historical-imports', label: 'Uploads Historicos', icon: 'UH' },
 ];
 
