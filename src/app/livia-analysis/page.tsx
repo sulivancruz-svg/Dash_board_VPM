@@ -22,14 +22,35 @@ export default function LiviaAnalysisPage() {
     async function analyze() {
       try {
         // Busca dados do Pipedrive Direto
-        const response = await fetch('/api/pipedrive-direct');
+        let response = await fetch('/api/pipedrive-direct');
         if (!response.ok) throw new Error('Falha ao carregar dados do Pipedrive');
 
-        const data = await response.json();
-        const directData = data.data;
+        let data = await response.json();
+        let directData = data.data;
+
+        // Se não houver dados, tenta sincronizar
+        if (!directData || !directData.allDeals || directData.allDeals.length === 0) {
+          console.log('Sincronizando dados do Pipedrive...');
+          const syncResponse = await fetch('/api/pipedrive-direct/sync', { method: 'POST' });
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            console.log('Sincronização concluída:', syncData);
+
+            // Tenta buscar novamente após sincronização
+            const retryResponse = await fetch('/api/pipedrive-direct');
+            if (retryResponse.ok) {
+              data = await retryResponse.json();
+              directData = data.data;
+            }
+          }
+        }
 
         if (!directData) {
           throw new Error('Dados do Pipedrive não disponíveis. Configure a conexão na aba "Pipedrive Direto"');
+        }
+
+        if (!directData.allDeals || directData.allDeals.length === 0) {
+          throw new Error('Nenhum dado sincronizado. Verifique a configuração do Pipedrive Direto.');
         }
 
         // Filtra deals de Livia
