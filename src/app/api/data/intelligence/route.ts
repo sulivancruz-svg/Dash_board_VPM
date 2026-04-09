@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getPipedriveData, getSdrData } from '@/lib/data-store';
 import { blobGetJson } from '@/lib/storage';
 import { attributeChannel } from '@/lib/channel-mapping';
@@ -146,8 +146,33 @@ export interface IntelligenceData {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    // Parâmetros de período (start/end ISO ou period em dias)
+    const sp    = req.nextUrl.searchParams;
+    const start = sp.get('start') ?? null;
+    const end   = sp.get('end')   ?? null;
+
+    // Filtra deal por data de criação dentro do período selecionado
+    const inRange = (dateStr: string | null): boolean => {
+      if (!dateStr) return true;           // sem data → inclui sempre
+      if (!start && !end) return true;     // sem filtro → inclui tudo
+      const d = dateStr.substring(0, 10); // "2026-03-15"
+      if (start && d < start) return false;
+      if (end   && d > end)   return false;
+      return true;
+    };
+
+    // Meses dentro do range (para filtrar monthly e google months)
+    const monthInRange = (monthKey: string): boolean => {
+      if (!start && !end) return true;
+      const startMk = start ? start.substring(0, 7) : null;
+      const endMk   = end   ? end.substring(0, 7)   : null;
+      if (startMk && monthKey < startMk) return false;
+      if (endMk   && monthKey > endMk)   return false;
+      return true;
+    };
+
     const [pipedriveData, sdrData, googleAdsData] = await Promise.all([
       getPipedriveData(),
       getSdrData(),
@@ -173,13 +198,13 @@ export async function GET() {
       ...(pipedriveData.mondeDeals || []),
       ...(pipedriveData.pipelineDeals || []),
     ];
-    // Deduplica por ID
+    // Deduplica por ID e aplica filtro de período
     const seen = new Set<string>();
     const deals = rawDeals.filter(d => {
       if (!d.receita || !d.createdDate) return false;
       if (seen.has(d.id)) return false;
       seen.add(d.id);
-      return true;
+      return inRange(d.createdDate);
     });
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -196,8 +221,16 @@ export async function GET() {
         channelMap.set(canal, cur);
       }
     } else {
+      // Fallback: filtra monthly por período e distribui channels proporcionalmente
+      const filteredMonthly = (pipedriveData.monthly || []).filter(m => monthInRange(m.monthKey));
+      const filteredRevenue = filteredMonthly.reduce((s, m) => s + m.receita, 0);
+      const totalRevAll     = pipedriveData.totalRevenue || 1;
       for (const ch of pipedriveData.channels || []) {
-        channelMap.set(ch.canal, { receita: ch.receita, deals: ch.vendas });
+        const pct = totalRevAll > 0 ? ch.receita / totalRevAll : 0;
+        channelMap.set(ch.canal, {
+          receita: Math.round(filteredRevenue * pct || ch.receita),
+          deals:   ch.vendas,
+        });
       }
     }
 
@@ -236,10 +269,10 @@ export async function GET() {
         mMap.set(monthKey, cur);
       }
     } else {
-      // Fallback: distribui proporcionalmente pelos meses do Pipedrive
-      for (const m of pipedriveData.monthly || []) {
+      // Fallback: distribui proporcionalmente pelos meses filtrados
+      const totalRev = pipedriveData.totalRevenue || 1;
+      for (const m of (pipedriveData.monthly || []).filter(m => monthInRange(m.monthKey))) {
         allMonthSet.add(m.monthKey);
-        const totalRev = pipedriveData.totalRevenue || 1;
         for (const ch of pipedriveData.channels || []) {
           const pct = ch.receita / totalRev;
           if (!temporal.has(ch.canal)) temporal.set(ch.canal, new Map());

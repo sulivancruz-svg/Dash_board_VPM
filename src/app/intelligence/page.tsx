@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import {
   Brain, Loader, RefreshCw, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, CheckCircle, XCircle, Zap, BarChart2, Target,
+  AlertTriangle, CheckCircle, XCircle, BarChart2,
 } from 'lucide-react';
 import type {
   IntelligenceData, ChannelRanking, TemporalChannel,
   GoogleProjection, EfficiencyScore, AnomalyMetric,
 } from '@/app/api/data/intelligence/route';
+import { DateRangeFilter } from '@/components/date-range-filter';
+import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -552,6 +554,7 @@ function AnomalySection({ anomalies }: { anomalies: IntelligenceData['anomalies'
 // PÁGINA PRINCIPAL
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export default function IntelligencePage() {
+  const { activePeriod, dateRange, setPresetPeriod, setCustomDateRange } = useDashboardDateRange();
   const [data, setData] = useState<IntelligenceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -559,7 +562,8 @@ export default function IntelligencePage() {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch('/api/data/intelligence', { cache: 'no-store' });
+      const params = new URLSearchParams({ start: dateRange.start, end: dateRange.end });
+      const res = await fetch(`/api/data/intelligence?${params}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setData(json);
@@ -570,13 +574,13 @@ export default function IntelligencePage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [dateRange.start, dateRange.end]);
 
   return (
     <div className="space-y-10">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
             <Brain className="w-5 h-5 text-white" />
@@ -586,11 +590,18 @@ export default function IntelligencePage() {
             <p className="text-sm text-slate-500">Análise automatizada dos seus dados reais</p>
           </div>
         </div>
-        <button onClick={load} disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <DateRangeFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            onPresetSelect={setPresetPeriod}
+            onRangeChange={setCustomDateRange}
+          />
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Loading */}
