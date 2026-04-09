@@ -6,6 +6,29 @@ import type {
 } from './data-store';
 import type { DateRange } from './date-range';
 
+/**
+ * Normaliza nomes de canais confusos ou duplicados.
+ * Resolve casos como "Espontaneamente + Indicação" → "Indicação"
+ */
+function normalizeChannelName(rawCanal: string): string {
+  if (!rawCanal) return '';
+
+  // Canais com múltiplas origem separadas por "+" — prioriza Indicação/Networking/Prospecção
+  if (rawCanal.includes('+')) {
+    if (/indicação|indicado/i.test(rawCanal)) {
+      return 'Indicação - Indicado por Cliente VPM';
+    }
+    if (/networking|relacionamento/i.test(rawCanal)) {
+      return 'Networking - Relacionamentos Pessoais';
+    }
+    if (/prospec[çc][aã]o/i.test(rawCanal)) {
+      return 'Prospecção Agente - Agente Provocou o Contato';
+    }
+  }
+
+  return rawCanal;
+}
+
 const MONTH_PT: Record<number, string> = {
   1: 'janeiro',
   2: 'fevereiro',
@@ -100,9 +123,10 @@ export function getPipedriveMetricsForRange(
   let maxDate: string | null = null;
 
   for (const deal of leadSourceDeals) {
-    const entry = channelMap.get(deal.canal) ?? { canal: deal.canal, leads: 0, vendas: 0, receita: 0 };
+    const normalizedCanal = normalizeChannelName(deal.canal);
+    const entry = channelMap.get(normalizedCanal) ?? { canal: normalizedCanal, leads: 0, vendas: 0, receita: 0 };
     entry.leads += 1;
-    channelMap.set(deal.canal, entry);
+    channelMap.set(normalizedCanal, entry);
 
     if (isWonStatus(deal.status)) {
       totalWon += 1;
@@ -121,10 +145,11 @@ export function getPipedriveMetricsForRange(
   }
 
   for (const deal of filteredMondeDeals) {
-    const entry = channelMap.get(deal.canal) ?? { canal: deal.canal, leads: 0, vendas: 0, receita: 0 };
+    const normalizedCanal = normalizeChannelName(deal.canal);
+    const entry = channelMap.get(normalizedCanal) ?? { canal: normalizedCanal, leads: 0, vendas: 0, receita: 0 };
     entry.vendas += 1;
     entry.receita += deal.receita || 0;
-    channelMap.set(deal.canal, entry);
+    channelMap.set(normalizedCanal, entry);
 
     totalRevenue += deal.receita || 0;
 
