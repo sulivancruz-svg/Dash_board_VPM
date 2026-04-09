@@ -141,11 +141,12 @@ export async function blobUploadFile(
   blobPath: string,
   buffer: Buffer,
   contentType = 'application/octet-stream',
+  access: 'public' | 'private' = 'private',
 ): Promise<string> {
   if (IS_BLOB) {
     const { put } = await import('@vercel/blob');
     const result = await put(blobPath, buffer, {
-      access: 'private',
+      access,
       addRandomSuffix: false,
       contentType,
     } as Parameters<typeof put>[2]);

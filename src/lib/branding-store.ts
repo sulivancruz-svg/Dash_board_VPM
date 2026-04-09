@@ -56,6 +56,7 @@ export async function saveBrandingSettings(input: {
       `branding-assets/${safeName}`,
       input.logoBuffer,
       contentType,
+      'public', // logos must be publicly accessible for browser <img> tags
     );
   }
 
