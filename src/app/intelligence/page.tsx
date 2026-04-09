@@ -2,259 +2,564 @@
 
 import { useEffect, useState } from 'react';
 import {
-  TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle,
-  XCircle, Brain, BarChart2, Loader, RefreshCw,
+  Brain, Loader, RefreshCw, TrendingUp, TrendingDown, Minus,
+  AlertTriangle, CheckCircle, XCircle, Zap, BarChart2, Target,
 } from 'lucide-react';
-import type { IntelligenceData, MetricSeries, CohortRow, ChannelCohort } from '@/app/api/data/intelligence/route';
+import type {
+  IntelligenceData, ChannelRanking, TemporalChannel,
+  GoogleProjection, EfficiencyScore, AnomalyMetric,
+} from '@/app/api/data/intelligence/route';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
-function fmtCurrency(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
-}
-function fmtNum(v: number) {
-  return v.toLocaleString('pt-BR');
-}
-function fmtPct(v: number) {
-  return `${v > 0 ? '+' : ''}${v}%`;
-}
+const BRL = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const NUM = (v: number) => v.toLocaleString('pt-BR');
+const PCT = (v: number) => `${v > 0 ? '+' : ''}${v}%`;
 
-// ── Mini Sparkline ────────────────────────────────────────────────────────────
+// ── Cores por attribution ─────────────────────────────────────────────────────
+const ATTR_BADGE: Record<string, string> = {
+  PAID_MEDIA:         'bg-blue-100 text-blue-700',
+  ORGANIC_COMMERCIAL: 'bg-amber-100 text-amber-700',
+  BRAND_BASE:         'bg-violet-100 text-violet-700',
+  UNKNOWN:            'bg-slate-100 text-slate-500',
+};
+const ATTR_LABEL: Record<string, string> = {
+  PAID_MEDIA: 'Mídia Paga', ORGANIC_COMMERCIAL: 'Orgânico',
+  BRAND_BASE: 'Branding', UNKNOWN: 'Não inf.',
+};
 
-function Sparkline({ series, mean, color }: { series: number[]; mean: number; color: string }) {
-  if (series.length < 2) return null;
-  const max = Math.max(...series, mean * 1.1);
-  const min = Math.min(...series, mean * 0.9);
+// ── Mini Sparkline ─────────────────────────────────────────────────────────────
+function Sparkline({ values, color = '#6366f1' }: { values: number[]; color?: string }) {
+  if (values.length < 2) return null;
+  const max = Math.max(...values) || 1;
+  const min = Math.min(...values);
   const range = max - min || 1;
-  const W = 120;
-  const H = 40;
-
-  const toX = (i: number) => (i / (series.length - 1)) * W;
-  const toY = (v: number) => H - ((v - min) / range) * H;
-  const pts = series.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
-  const meanY = toY(mean);
-
+  const W = 80; const H = 28;
+  const pts = values.map((v, i) =>
+    `${(i / (values.length - 1)) * W},${H - ((v - min) / range) * H}`).join(' ');
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10">
-      {/* Banda da média */}
-      <line x1={0} y1={meanY} x2={W} y2={meanY} stroke="#94a3b8" strokeDasharray="3 2" strokeWidth={1} opacity={0.6} />
-      {/* Linha de dados */}
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-      {/* Último ponto */}
-      <circle cx={toX(series.length - 1)} cy={toY(series[series.length - 1])} r={3} fill={color} />
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-7 w-20">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.8}
+        strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={(W)} cy={H - ((values[values.length-1] - min) / range) * H}
+        r={2.5} fill={color} />
     </svg>
   );
 }
 
-// ── Status Config ─────────────────────────────────────────────────────────────
-
-const statusConfig = {
-  ok: {
-    icon: CheckCircle,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    badge: 'bg-emerald-100 text-emerald-700',
-    label: 'Normal',
-    sparkColor: '#10b981',
-  },
-  warning: {
-    icon: AlertTriangle,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    badge: 'bg-amber-100 text-amber-700',
-    label: 'Atenção',
-    sparkColor: '#f59e0b',
-  },
-  anomaly: {
-    icon: XCircle,
-    color: 'text-red-600',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    badge: 'bg-red-100 text-red-700',
-    label: 'Anomalia',
-    sparkColor: '#ef4444',
-  },
-};
-
-const trendConfig = {
-  growing: { icon: TrendingUp, color: 'text-emerald-600', label: 'Crescendo' },
-  declining: { icon: TrendingDown, color: 'text-red-500', label: 'Caindo' },
-  stable: { icon: Minus, color: 'text-slate-400', label: 'Estável' },
-};
-
-const attrColors: Record<string, string> = {
-  PAID_MEDIA: 'bg-blue-100 text-blue-700',
-  ORGANIC_COMMERCIAL: 'bg-amber-100 text-amber-700',
-  BRAND_BASE: 'bg-violet-100 text-violet-700',
-  UNKNOWN: 'bg-slate-100 text-slate-500',
-};
-const attrLabels: Record<string, string> = {
-  PAID_MEDIA: 'Mídia Paga',
-  ORGANIC_COMMERCIAL: 'Orgânico',
-  BRAND_BASE: 'Branding',
-  UNKNOWN: 'Não inf.',
-};
-
-// ── Anomaly Card ──────────────────────────────────────────────────────────────
-
-function AnomalyCard({ metric }: { metric: MetricSeries }) {
-  const cfg = statusConfig[metric.status];
-  const Icon = cfg.icon;
-  const values = metric.series.map(s => s.value);
-  const dirIcon = metric.direction === 'up'
-    ? <TrendingUp className="w-3.5 h-3.5" />
-    : metric.direction === 'down'
-      ? <TrendingDown className="w-3.5 h-3.5" />
-      : <Minus className="w-3.5 h-3.5" />;
-
-  const fmt = metric.unit === 'currency' ? fmtCurrency : metric.unit === 'percent' ? (v: number) => `${v}%` : fmtNum;
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEÇÃO 1 — Ranking de Canais (por ticket médio)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function ChannelRankingSection({ channels }: { channels: ChannelRanking[] }) {
+  const [sort, setSort] = useState<'ticket' | 'receita'>('ticket');
+  const sorted = [...channels].sort((a, b) =>
+    sort === 'ticket' ? b.ticketMedio - a.ticketMedio : b.receita - a.receita);
+  const maxTicket  = Math.max(...channels.map(c => c.ticketMedio), 1);
+  const maxReceita = Math.max(...channels.map(c => c.receita), 1);
 
   return (
-    <div className={`rounded-xl border ${cfg.border} ${cfg.bg} p-5 flex flex-col gap-3`}>
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-800">
+            Qual canal traz clientes de maior valor?
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Ticket médio e receita total por canal de origem
+          </p>
+        </div>
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+          {(['ticket','receita'] as const).map(s => (
+            <button key={s} onClick={() => setSort(s)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${sort === s ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
+              {s === 'ticket' ? 'Ticket' : 'Receita'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-100">
+            <tr>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-6">#</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Canal</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider min-w-[180px]">
+                {sort === 'ticket' ? 'Ticket Médio' : 'Receita Total'}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                {sort === 'ticket' ? 'Receita' : 'Ticket'}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Deals</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">% Receita</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {sorted.map((ch, i) => {
+              const barPct = sort === 'ticket'
+                ? (ch.ticketMedio / maxTicket) * 100
+                : (ch.receita / maxReceita) * 100;
+              const barValue = sort === 'ticket' ? ch.ticketMedio : ch.receita;
+              const otherValue = sort === 'ticket' ? ch.receita : ch.ticketMedio;
+              const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+              return (
+                <tr key={ch.canal} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-5 py-3 text-sm text-slate-400">{medal ?? i + 1}</td>
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800 leading-tight">{ch.canal}</p>
+                      <span className={`inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${ATTR_BADGE[ch.attribution] ?? ATTR_BADGE.UNKNOWN}`}>
+                        {ATTR_LABEL[ch.attribution] ?? 'Outro'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[80px]">
+                        <div className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                          style={{ width: `${barPct}%` }} />
+                      </div>
+                      <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
+                        {BRL(barValue)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 text-right whitespace-nowrap">
+                    {BRL(otherValue)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 text-right">{NUM(ch.deals)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="text-xs font-semibold text-slate-500">{ch.pctReceita}%</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEÇÃO 2 — Evolução Temporal por Canal (heatmap)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function TemporalSection({ channels, allMonthKeys }: { channels: TemporalChannel[]; allMonthKeys: string[] }) {
+  const [view, setView] = useState<'receita' | 'deals' | 'ticket'>('receita');
+
+  // Valor máximo global (para normalizar intensidade das células)
+  const allValues = channels.flatMap(ch =>
+    ch.cells.map(c => view === 'receita' ? c.receita : view === 'deals' ? c.deals : c.ticketMedio));
+  const maxVal = Math.max(...allValues, 1);
+
+  const cellIntensity = (v: number) => Math.min(v / maxVal, 1);
+
+  const cellBg = (v: number) => {
+    const i = cellIntensity(v);
+    if (i === 0) return 'bg-slate-50 text-slate-300';
+    if (i < 0.2)  return 'bg-indigo-50 text-indigo-400';
+    if (i < 0.4)  return 'bg-indigo-100 text-indigo-600';
+    if (i < 0.6)  return 'bg-indigo-200 text-indigo-700';
+    if (i < 0.8)  return 'bg-indigo-300 text-indigo-800';
+    return 'bg-indigo-500 text-white font-bold';
+  };
+
+  const fmt = (c: TemporalChannel['cells'][0]) =>
+    view === 'receita' ? BRL(c.receita) : view === 'deals' ? String(c.deals) : BRL(c.ticketMedio);
+
+  // Últimos 6 meses
+  const visibleMonths = allMonthKeys.slice(-6);
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-800">
+            Quem está crescendo ou caindo por canal?
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Evolução mês a mês por canal — baseada na data de criação da oportunidade no Pipedrive
+          </p>
+        </div>
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+          {(['receita','deals','ticket'] as const).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${view === v ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
+              {v === 'receita' ? 'Receita' : v === 'deals' ? 'Deals' : 'Ticket'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider sticky left-0 bg-slate-50 min-w-[200px]">
+                  Canal
+                </th>
+                {visibleMonths.map(mk => {
+                  const [y, m] = mk.split('-').map(Number);
+                  const labels: Record<number,string> = {1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez'};
+                  return (
+                    <th key={mk} className="px-3 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      {labels[m]}/{String(y).slice(2)}
+                    </th>
+                  );
+                })}
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Tendência
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {channels.map(ch => {
+                const visibleCells = ch.cells.filter(c => visibleMonths.includes(c.monthKey));
+                const revenues = visibleCells.map(c => c.receita);
+                const lastTwo  = revenues.slice(-2);
+                const trend    = lastTwo.length === 2
+                  ? lastTwo[1] > lastTwo[0] ? 'up' : lastTwo[1] < lastTwo[0] ? 'down' : 'stable'
+                  : 'stable';
+
+                return (
+                  <tr key={ch.canal} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-3 sticky left-0 bg-white hover:bg-slate-50/50">
+                      <p className="text-sm font-semibold text-slate-800 leading-tight">{ch.canal}</p>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${ATTR_BADGE[ch.attribution] ?? ATTR_BADGE.UNKNOWN}`}>
+                        {ATTR_LABEL[ch.attribution] ?? 'Outro'}
+                      </span>
+                    </td>
+                    {visibleMonths.map(mk => {
+                      const cell = visibleCells.find(c => c.monthKey === mk) ?? { receita: 0, deals: 0, ticketMedio: 0, monthKey: mk, monthLabel: '' };
+                      const val  = view === 'receita' ? cell.receita : view === 'deals' ? cell.deals : cell.ticketMedio;
+                      return (
+                        <td key={mk} className={`px-3 py-3 text-center text-xs transition-colors rounded-sm mx-0.5 ${cellBg(val)}`}>
+                          {val > 0 ? fmt(cell) : '—'}
+                        </td>
+                      );
+                    })}
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Sparkline values={revenues} color={trend === 'up' ? '#10b981' : trend === 'down' ? '#ef4444' : '#94a3b8'} />
+                        {trend === 'up'
+                          ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                          : trend === 'down'
+                            ? <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                            : <Minus className="w-3.5 h-3.5 text-slate-400" />}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEÇÃO 3 — Projeção Google
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
+  if (!proj.hasEnoughData) {
+    return (
+      <section>
+        <h2 className="text-base font-bold text-slate-800 mb-1">
+          Se eu investir mais no Google, o que acontece?
+        </h2>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
+          Precisamos de ao menos 3 meses de investimento no Google para calcular a projeção.
+        </div>
+      </section>
+    );
+  }
+
+  const { forecast, roiHistorico, regression, points } = proj;
+  const baseScenario = forecast[1]; // 1x = média histórica
+
+  return (
+    <section>
+      <div className="mb-4">
+        <h2 className="text-base font-bold text-slate-800">
+          Se eu investir mais no Google, o que acontece?
+        </h2>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Projeção baseada em regressão linear do histórico real
+          {' '}· R² = {regression.r2} (quanto mais próximo de 1, mais confiável)
+        </p>
+      </div>
+
+      {/* Contexto histórico */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">ROI Histórico</p>
+          <p className="text-2xl font-bold text-indigo-700">{roiHistorico}x</p>
+          <p className="text-xs text-slate-500 mt-1">cada R$ 1 investido gerou R$ {roiHistorico} em oportunidades</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Meses analisados</p>
+          <p className="text-2xl font-bold text-slate-700">{points.length}</p>
+          <p className="text-xs text-slate-500 mt-1">pares investimento × receita disponíveis</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Confiança</p>
+          <p className={`text-2xl font-bold ${regression.r2 >= 0.7 ? 'text-emerald-600' : regression.r2 >= 0.4 ? 'text-amber-600' : 'text-red-500'}`}>
+            {regression.r2 >= 0.7 ? 'Alta' : regression.r2 >= 0.4 ? 'Média' : 'Baixa'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">R² = {regression.r2}</p>
+        </div>
+      </div>
+
+      {/* Cenários */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cenários de investimento</p>
+        </div>
+        <table className="w-full">
+          <thead className="border-b border-slate-100">
+            <tr>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Cenário</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Investimento</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Receita esperada</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">ROI projetado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {forecast.map((f, i) => {
+              const labels = ['Metade', 'Atual (base)', '+50%', 'Dobro', 'Triplo'];
+              const isBase = i === 1;
+              return (
+                <tr key={i} className={isBase ? 'bg-indigo-50' : 'hover:bg-slate-50'}>
+                  <td className="px-5 py-3.5">
+                    <span className={`text-sm font-semibold ${isBase ? 'text-indigo-700' : 'text-slate-700'}`}>
+                      {labels[i]}
+                    </span>
+                    {isBase && (
+                      <span className="ml-2 text-[10px] bg-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">
+                        referência
+                      </span>
+                    )}
+                  </td>
+                  <td className={`px-5 py-3.5 text-sm text-right ${isBase ? 'font-bold text-indigo-700' : 'text-slate-600'}`}>
+                    {BRL(f.invest)}
+                  </td>
+                  <td className={`px-5 py-3.5 text-sm text-right font-bold ${isBase ? 'text-indigo-700' : 'text-slate-800'}`}>
+                    {BRL(f.receitaEsperada)}
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <span className={`text-sm font-bold ${f.roi >= 3 ? 'text-emerald-600' : f.roi >= 1.5 ? 'text-amber-600' : 'text-red-500'}`}>
+                      {f.roi}x
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
+          <p className="text-xs text-slate-400">
+            ⚠️ Projeção baseada em correlação histórica. Não considera saturação de mercado, sazonalidade ou concorrência.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEÇÃO 4 — Score de Eficiência (apenas paid)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function EfficiencySection({ scores }: { scores: EfficiencyScore[] }) {
+  if (scores.length === 0) {
+    return (
+      <section>
+        <h2 className="text-base font-bold text-slate-800 mb-1">Score de Eficiência — Canais Pagos</h2>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
+          Conecte Google Ads e Meta Ads para ver o score de eficiência por canal pago.
+        </div>
+      </section>
+    );
+  }
+
+  const maxRoi = Math.max(...scores.map(s => s.roi), 1);
+
+  return (
+    <section>
+      <div className="mb-4">
+        <h2 className="text-base font-bold text-slate-800">Qual canal pago é mais eficiente?</h2>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Receita gerada por real investido — ROI = receita atribuída ÷ investimento real
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {scores.map(s => {
+          const roiBar = (s.roi / maxRoi) * 100;
+          const roiColor = s.roi >= 3 ? 'text-emerald-600' : s.roi >= 1.5 ? 'text-amber-600' : 'text-red-500';
+          const barColor = s.roi >= 3 ? 'bg-emerald-500' : s.roi >= 1.5 ? 'bg-amber-400' : 'bg-red-400';
+
+          return (
+            <div key={s.canal} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold ${s.tipo === 'google' ? 'bg-blue-500' : 'bg-rose-500'}`}>
+                    {s.tipo === 'google' ? 'G' : 'M'}
+                  </div>
+                  <p className="text-sm font-bold text-slate-800">{s.canal}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-2xl font-bold ${roiColor}`}>{s.roiLabel}</p>
+                  <p className="text-[10px] text-slate-400">por real investido</p>
+                </div>
+              </div>
+
+              {/* Barra de ROI */}
+              <div className="mb-4">
+                <div className="bg-slate-100 rounded-full h-2">
+                  <div className={`${barColor} h-2 rounded-full transition-all`} style={{ width: `${roiBar}%` }} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Investido</p>
+                  <p className="text-sm font-bold text-slate-700">
+                    {s.investimento > 0 ? BRL(s.investimento) : 'N/D'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Receita</p>
+                  <p className="text-sm font-bold text-slate-700">{BRL(s.receita)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Deals</p>
+                  <p className="text-sm font-bold text-slate-700">{s.deals}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Ticket Médio</p>
+                  <p className="text-sm font-bold text-slate-700">{BRL(s.ticketMedio)}</p>
+                </div>
+                {s.cpa > 0 && (
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Custo por Deal (CPA)</p>
+                    <p className="text-sm font-bold text-slate-700">{BRL(s.cpa)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEÇÃO 5 — Radar de Anomalias
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const STATUS_CFG = {
+  ok:      { icon: CheckCircle,   color: 'text-emerald-600', bg: 'bg-emerald-50',  border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', label: 'Normal',   spark: '#10b981' },
+  warning: { icon: AlertTriangle, color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700',   label: 'Atenção',  spark: '#f59e0b' },
+  anomaly: { icon: XCircle,       color: 'text-red-600',     bg: 'bg-red-50',     border: 'border-red-200',    badge: 'bg-red-100 text-red-700',       label: 'Anomalia', spark: '#ef4444' },
+};
+
+function AnomalyCard({ m }: { m: AnomalyMetric }) {
+  const cfg  = STATUS_CFG[m.status];
+  const Icon = cfg.icon;
+  const fmt  = m.unit === 'currency' ? BRL : NUM;
+  return (
+    <div className={`rounded-xl border ${cfg.border} ${cfg.bg} p-5 space-y-3`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{metric.label}</p>
-          <p className={`text-2xl font-bold mt-1 ${cfg.color}`}>{fmt(metric.latest)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">{metric.latestLabel} · último período</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{m.label}</p>
+          <p className={`text-2xl font-bold mt-1 ${cfg.color}`}>{fmt(m.latest)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{m.latestLabel} · último período</p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <Icon className={`w-5 h-5 ${cfg.color}`} />
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badge}`}>{cfg.label}</span>
         </div>
       </div>
-
-      {/* Sparkline */}
-      <Sparkline series={values} mean={metric.mean} color={cfg.sparkColor} />
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200/60">
+      <Sparkline values={m.series.map(s => s.value)} color={cfg.spark} />
+      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/60">
         <div>
           <p className="text-[10px] text-slate-400 uppercase tracking-wider">Média</p>
-          <p className="text-xs font-semibold text-slate-700">{fmt(metric.mean)}</p>
+          <p className="text-xs font-semibold text-slate-700">{fmt(m.mean)}</p>
         </div>
         <div>
           <p className="text-[10px] text-slate-400 uppercase tracking-wider">vs. Média</p>
-          <p className={`text-xs font-semibold flex items-center gap-0.5 ${metric.direction === 'up' ? 'text-emerald-600' : 'text-red-500'}`}>
-            {dirIcon}
-            {fmtPct(metric.changeVsMean)}
+          <p className={`text-xs font-semibold ${m.direction === 'up' ? 'text-emerald-600' : 'text-red-500'}`}>
+            {PCT(m.changeVsMean)}
           </p>
         </div>
         <div>
           <p className="text-[10px] text-slate-400 uppercase tracking-wider">Z-Score</p>
-          <p className={`text-xs font-semibold ${cfg.color}`}>{metric.zScore > 0 ? '+' : ''}{metric.zScore}σ</p>
+          <p className={`text-xs font-semibold ${cfg.color}`}>
+            {m.zScore > 0 ? '+' : ''}{m.zScore}σ
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Cohort Month Row ──────────────────────────────────────────────────────────
-
-function CohortMonthRow({ cohort, maxReceita }: { cohort: CohortRow; maxReceita: number }) {
-  const pct = maxReceita > 0 ? (cohort.receita / maxReceita) * 100 : 0;
-
+function AnomalySection({ anomalies }: { anomalies: IntelligenceData['anomalies'] }) {
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className="px-4 py-3 text-sm font-semibold text-slate-700 capitalize whitespace-nowrap">
-        {cohort.month}/{cohort.year}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-            <div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="text-sm font-semibold text-slate-800 whitespace-nowrap w-28 text-right">
-            {fmtCurrency(cohort.receita)}
-          </span>
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-800">Radar de Anomalias</h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Detecta quando uma métrica sai do padrão histórico (Z-score ≥ 1.2σ = atenção · ≥ 2σ = anomalia)
+          </p>
         </div>
-      </td>
-      <td className="px-4 py-3 text-sm text-slate-600 text-center">{cohort.deals}</td>
-      <td className="px-4 py-3 text-sm font-medium text-slate-700 text-right">{fmtCurrency(cohort.ticketMedio)}</td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap gap-1">
-          {cohort.channels.slice(0, 3).map(ch => (
-            <span key={ch.canal} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-              {ch.canal}
-            </span>
+        {anomalies.totalAlerts > 0
+          ? <span className="text-xs font-semibold px-3 py-1 rounded-full bg-red-100 text-red-700">{anomalies.totalAlerts} alerta{anomalies.totalAlerts > 1 ? 's' : ''}</span>
+          : anomalies.metrics.length > 0 && <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">Tudo normal</span>
+        }
+      </div>
+
+      {anomalies.metrics.length === 0 ? (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
+          Precisamos de ao menos 3 meses de dados para detectar anomalias.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {anomalies.metrics.map(m => <AnomalyCard key={m.label} m={m} />)}
+        </div>
+      )}
+
+      {anomalies.alerts.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {anomalies.alerts.map((a, i) => (
+            <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${a.severity === 'critical' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+              {a.severity === 'critical' ? <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
+              <span>{a.message}</span>
+              <span className="ml-auto font-mono text-xs opacity-60 whitespace-nowrap">z={a.zScore > 0 ? '+' : ''}{a.zScore}σ</span>
+            </div>
           ))}
-          {cohort.channels.length > 3 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-400">
-              +{cohort.channels.length - 3}
-            </span>
-          )}
         </div>
-      </td>
-    </tr>
+      )}
+    </section>
   );
 }
 
-// ── Channel Cohort Card ───────────────────────────────────────────────────────
-
-function ChannelCard({ ch, grandTotal }: { ch: ChannelCohort; grandTotal: number }) {
-  const TrendIcon = trendConfig[ch.trend].icon;
-  const pctBar = grandTotal > 0 ? (ch.totalReceita / grandTotal) * 100 : 0;
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${attrColors[ch.attribution] || attrColors.UNKNOWN}`}>
-              {attrLabels[ch.attribution] || 'Outro'}
-            </span>
-          </div>
-          <p className="text-sm font-bold text-slate-800">{ch.canal}</p>
-        </div>
-        <span className={`flex items-center gap-1 text-xs font-semibold ${trendConfig[ch.trend].color}`}>
-          <TrendIcon className="w-3.5 h-3.5" />
-          {ch.trendPct > 0 ? '+' : ''}{ch.trendPct}%
-        </span>
-      </div>
-
-      {/* Barra de participação */}
-      <div className="mb-3">
-        <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-          <span>Participação na receita</span>
-          <span className="font-semibold text-slate-600">{ch.pctReceita}%</span>
-        </div>
-        <div className="bg-slate-100 rounded-full h-1.5">
-          <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${pctBar}%` }} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100">
-        <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider">Receita</p>
-          <p className="text-xs font-bold text-slate-800">{fmtCurrency(ch.totalReceita)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider">Deals</p>
-          <p className="text-xs font-bold text-slate-800">{ch.totalDeals}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider">Ticket</p>
-          <p className="text-xs font-bold text-slate-800">{fmtCurrency(ch.ticketMedio)}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PÁGINA PRINCIPAL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export default function IntelligencePage() {
   const [data, setData] = useState<IntelligenceData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
+  const load = async () => {
+    setLoading(true); setError(null);
     try {
       const res = await fetch('/api/data/intelligence', { cache: 'no-store' });
-      if (!res.ok) throw new Error('Erro ao buscar dados de inteligência');
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setData(json);
@@ -265,10 +570,10 @@ export default function IntelligencePage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { load(); }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -281,11 +586,8 @@ export default function IntelligencePage() {
             <p className="text-sm text-slate-500">Análise automatizada dos seus dados reais</p>
           </div>
         </div>
-        <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-        >
+        <button onClick={load} disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Atualizar
         </button>
@@ -299,7 +601,7 @@ export default function IntelligencePage() {
         </div>
       )}
 
-      {/* Error */}
+      {/* Erro */}
       {!loading && error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
           <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
@@ -313,154 +615,18 @@ export default function IntelligencePage() {
           <BarChart2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <h3 className="text-base font-semibold text-slate-700 mb-2">Dados insuficientes</h3>
           <p className="text-sm text-slate-500 max-w-sm mx-auto">
-            Importe dados do Pipedrive e SDR para ativar a análise de inteligência.
+            Importe dados do Pipedrive para ativar as análises de inteligência.
           </p>
         </div>
       )}
 
-      {!loading && !error && data && data.hasData && (
+      {!loading && !error && data?.hasData && (
         <>
-          {/* ── Seção 1: Radar de Anomalias ─────────────────────────────────── */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">Radar de Anomalias</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Detecta quando uma métrica sai do padrão histórico (Z-score ≥ 1.2σ = atenção · ≥ 2σ = anomalia)
-                </p>
-              </div>
-              {data.anomalies.totalAlerts > 0 && (
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-red-100 text-red-700">
-                  {data.anomalies.totalAlerts} alerta{data.anomalies.totalAlerts > 1 ? 's' : ''}
-                </span>
-              )}
-              {data.anomalies.totalAlerts === 0 && data.anomalies.metrics.length > 0 && (
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                  Tudo normal
-                </span>
-              )}
-            </div>
-
-            {data.anomalies.metrics.length === 0 ? (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
-                Precisamos de ao menos 3 meses de dados para detectar anomalias.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {data.anomalies.metrics.map(m => (
-                  <AnomalyCard key={m.label} metric={m} />
-                ))}
-              </div>
-            )}
-
-            {/* Alertas detalhados */}
-            {data.anomalies.alerts.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {data.anomalies.alerts.map((alert, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${
-                      alert.severity === 'critical'
-                        ? 'bg-red-50 border-red-200 text-red-800'
-                        : 'bg-amber-50 border-amber-200 text-amber-800'
-                    }`}
-                  >
-                    {alert.severity === 'critical'
-                      ? <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      : <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
-                    <span>{alert.message}</span>
-                    <span className="ml-auto font-mono text-xs opacity-60 whitespace-nowrap">
-                      z={alert.zScore > 0 ? '+' : ''}{alert.zScore}σ
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ── Seção 2: Cohort Analysis ─────────────────────────────────────── */}
-          <section>
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-slate-800">Análise de Cohort</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Clientes agrupados por mês de entrada — receita, volume e ticket médio por cohort e canal
-              </p>
-            </div>
-
-            {/* Por canal */}
-            {data.cohorts.byChannel.length > 0 && (
-              <>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                  Performance por Canal
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-                  {data.cohorts.byChannel.slice(0, 8).map(ch => (
-                    <ChannelCard
-                      key={ch.canal}
-                      ch={ch}
-                      grandTotal={data.cohorts.byChannel.reduce((s, c) => s + c.totalReceita, 0)}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Por mês */}
-            {data.cohorts.byMonth.length > 0 && (
-              <>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                  Evolução Mensal dos Cohorts
-                </h3>
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-slate-50 border-b border-slate-100">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cohort</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Receita</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Deals</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Ticket Médio</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Top Canais</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {[...data.cohorts.byMonth].reverse().map(cohort => (
-                        <CohortMonthRow
-                          key={cohort.monthKey}
-                          cohort={cohort}
-                          maxReceita={Math.max(...data.cohorts.byMonth.map(c => c.receita))}
-                        />
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-slate-50 border-t border-slate-200">
-                      <tr>
-                        <td className="px-4 py-3 text-xs font-bold text-slate-700">Total</td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-900 pr-8 text-right">
-                          {fmtCurrency(data.cohorts.byMonth.reduce((s, c) => s + c.receita, 0))}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-900 text-center">
-                          {data.cohorts.byMonth.reduce((s, c) => s + c.deals, 0)}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-900 text-right">
-                          {(() => {
-                            const totalReceita = data.cohorts.byMonth.reduce((s, c) => s + c.receita, 0);
-                            const totalDeals = data.cohorts.byMonth.reduce((s, c) => s + c.deals, 0);
-                            return fmtCurrency(totalDeals > 0 ? Math.round(totalReceita / totalDeals) : 0);
-                          })()}
-                        </td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </>
-            )}
-
-            {data.cohorts.byMonth.length === 0 && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
-                Nenhum dado de cohort disponível. Importe dados do Pipedrive para ativar esta análise.
-              </div>
-            )}
-          </section>
+          <ChannelRankingSection    channels={data.channelRanking} />
+          <TemporalSection          channels={data.temporalByChannel} allMonthKeys={data.allMonthKeys} />
+          <GoogleProjectionSection  proj={data.googleProjection} />
+          <EfficiencySection        scores={data.efficiencyScores} />
+          <AnomalySection           anomalies={data.anomalies} />
         </>
       )}
     </div>
