@@ -261,9 +261,11 @@ export async function GET(req: NextRequest) {
       ? Math.round(totalInvestimento / totalLeadsForCpl)
       : null;
 
-    // Taxa de conversão: leads → vendas (Pipedrive: totalDeals/totalLeads)
-    const conversionRate = totalLeadsForCpl > 0 && totalVendas > 0
-      ? Math.round((totalVendas / totalLeadsForCpl) * 1000) / 10
+    // Taxa de conversão: leads → vendas (Funil Comercial: totalVendas/totalLeads)
+    // Usa totalLeads (todos os canais), não apenas leads de mídia paga
+    const allLeads = pipedriveMetrics?.totalLeads || sdrData?.totalLeads || 0;
+    const conversionRate = allLeads > 0 && totalVendas > 0
+      ? Math.round((totalVendas / allLeads) * 1000) / 10
       : null;
 
     return NextResponse.json({
