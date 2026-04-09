@@ -27,7 +27,7 @@ const ATTR_BADGE: Record<string, string> = {
   UNKNOWN:            'bg-slate-100 text-slate-500',
 };
 const ATTR_LABEL: Record<string, string> = {
-  PAID_MEDIA: 'Mídia Paga', ORGANIC_COMMERCIAL: 'Orgânico',
+  PAID_MEDIA: 'Mídia Paga', ORGANIC_COMMERCIAL: 'Relacionamento Comercial',
   BRAND_BASE: 'Branding', UNKNOWN: 'Não inf.',
 };
 
