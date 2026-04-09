@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Análise completa do Instagram @vaipromundoviagens - Estratégia de conteúdo, funil de vendas e métricas de engajamento">
+    <title>Dashboard de Análise Instagram | @vaipromundoviagens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Semantic Color Tokens */
+            --color-primary: #667eea;
+            --color-primary-dark: #5568d3;
+            --color-primary-light: #8b9ef5;
+            --color-secondary: #764ba2;
+            --color-surface: #ffffff;
+            --color-surface-secondary: #f8f9fa;
+            --color-surface-tertiary: #eef2f5;
+            --color-text-primary: #1a1d29;
+            --color-text-secondary: #666b7a;
+            --color-text-tertiary: #959bb3;
+            --color-border: #e4e7eb;
+            --color-success: #10b981;
+            --color-success-light: #ecfdf5;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-danger-light: #fef2f2;
+
+            /* Spacing Scale (8pt rhythm) */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+
+            /* Typography Scale */
+            --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family-mono: 'JetBrains Mono', monospace;
+            --font-size-xs: 12px;
+            --font-size-sm: 14px;
+            --font-size-base: 16px;
+            --font-size-lg: 18px;
+            --font-size-xl: 20px;
+            --font-size-2xl: 24px;
+            --font-size-3xl: 32px;
+            --line-height-tight: 1.3;
+            --line-height-normal: 1.5;
+            --line-height-relaxed: 1.75;
+
+            /* Elevation/Shadow Scale */
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+            --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.2);
+
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-full: 9999px;
+
+            /* Animation */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: var(--font-family-primary);
+            background: var(--color-surface-secondary);
+            color: var(--color-text-primary);
+            line-height: var(--line-height-normal);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+        }
+
+        /* HEADER */
+        .header {
+            background: var(--color-surface);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--color-border);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-full);
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-surface);
+            font-size: var(--font-size-3xl);
+            flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+        }
+
+        .header-info h1 {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+            color: var(--color-text-primary);
+        }
+
+        .header-info p {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            line-height: var(--line-height-relaxed);
+        }
+
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .stat-card {
+            background: var(--color-surface);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--color-border);
+            transition: all var(--transition-base);
+            cursor: default;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+            border-color: var(--color-primary);
+        }
+
+        .stat-number {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-xs);
+            font-family: var(--font-family-mono);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            font-weight: 500;
+        }
+
+        /* GRID 2 */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--color-surface);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--color-border);
+            transition: all var(--transition-base);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card h2 {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 2px solid var(--color-primary);
+            color: var(--color-text-primary);
+        }
+
+        .card h3 {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-top: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card ul {
+            list-style: none;
+        }
+
+        .card li {
+            padding: var(--spacing-sm) 0;
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+            border-bottom: 1px solid var(--color-border);
+            transition: color var(--transition-fast);
+        }
+
+        .card li:hover {
+            color: var(--color-text-primary);
+        }
+
+        .card li:last-child {
+            border-bottom: none;
+        }
+
+        /* TONE ITEMS */
+        .tone-item {
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--color-surface-secondary);
+            border-left: 3px solid var(--color-primary);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }
+
+        .tone-item:hover {
+            background: var(--color-surface-tertiary);
+            border-left-width: 4px;
+        }
+
+        .tone-label {
+            font-weight: 600;
+            color: var(--color-primary);
+            font-size: var(--font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--spacing-xs);
+            display: block;
+        }
+
+        .tone-example {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+            font-style: italic;
+            line-height: var(--line-height-relaxed);
+        }
+
+        /* AUDIENCE ITEMS */
+        .audience-item {
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--color-surface-secondary);
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--color-success);
+        }
+
+        .audience-label {
+            font-weight: 600;
+            color: var(--color-success);
+            font-size: var(--font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--spacing-xs);
+            display: block;
+        }
+
+        .audience-value {
+            color: var(--color-text-primary);
+            font-size: var(--font-size-sm);
+            line-height: var(--line-height-relaxed);
+        }
+
+        /* FUNNEL STAGE */
+        .funnel-stage {
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            background: var(--color-surface-secondary);
+            border-left: 4px solid var(--color-primary);
+            border-radius: var(--radius-md);
+        }
+
+        .funnel-stage h4 {
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+        }
+
+        .funnel-stage > p {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .funnel-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: var(--spacing-sm);
+        }
+
+        .funnel-item {
+            background: var(--color-surface);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+            transition: all var(--transition-fast);
+            line-height: var(--line-height-normal);
+        }
+
+        .funnel-item:hover {
+            border-color: var(--color-primary);
+            background: var(--color-surface-tertiary);
+            color: var(--color-text-primary);
+        }
+
+        /* ENGAGEMENT TABLE */
+        .engagement-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: var(--spacing-lg);
+            font-size: var(--font-size-sm);
+        }
+
+        .engagement-table th {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: var(--color-surface);
+            padding: var(--spacing-md);
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: var(--font-size-xs);
+            letter-spacing: 0.5px;
+        }
+
+        .engagement-table td {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+        }
+
+        .engagement-table tr:hover {
+            background: var(--color-surface-secondary);
+        }
+
+        .engagement-table tr:hover td {
+            color: var(--color-text-primary);
+        }
+
+        .highlight {
+            background: var(--color-warning);
+            background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            color: #a16207;
+        }
+
+        /* HASHTAG CLOUD */
+        .hashtag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-lg);
+        }
+
+        .hashtag {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: var(--color-surface);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            transition: all var(--transition-fast);
+            cursor: default;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hashtag:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* INSIGHTS */
+        .insight {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            color: var(--color-surface);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            font-size: var(--font-size-sm);
+            line-height: var(--line-height-relaxed);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .insight strong {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            font-weight: 600;
+        }
+
+        /* FOOTER */
+        footer {
+            text-align: center;
+            color: var(--color-text-secondary);
+            padding: var(--spacing-xl);
+            font-size: var(--font-size-xs);
+            margin-top: var(--spacing-3xl);
+            border-top: 1px solid var(--color-border);
+        }
+
+        footer p {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        footer p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-sm);
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .funnel-items {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header-info h1 {
+                font-size: var(--font-size-xl);
+            }
+
+            .card h2 {
+                font-size: var(--font-size-lg);
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-md);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .funnel-items {
+                grid-template-columns: 1fr;
+            }
+
+            .engagement-table {
+                font-size: var(--font-size-xs);
+            }
+
+            .engagement-table td,
+            .engagement-table th {
+                padding: var(--spacing-sm);
+            }
+        }
+
+        /* FOCUS STATES */
+        *:focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+
+        /* REDUCED MOTION */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+
+        /* DARK MODE SUPPORT */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-surface: #1a1d29;
+                --color-surface-secondary: #252b3a;
+                --color-surface-tertiary: #2f3647;
+                --color-text-primary: #f5f7fa;
+                --color-text-secondary: #a9adb8;
+                --color-text-tertiary: #7a7f8c;
+                --color-border: #3a4051;
+            }
+
+            .tone-item {
+                background: var(--color-surface-secondary);
+            }
+
+            .tone-item:hover {
+                background: var(--color-surface-tertiary);
+            }
+
+            .audience-item {
+                background: var(--color-surface-secondary);
+            }
+
+            .funnel-stage {
+                background: var(--color-surface-secondary);
+            }
+
+            .funnel-item {
+                background: var(--color-surface-secondary);
+            }
+
+            .highlight {
+                background: linear-gradient(120deg, #714f1e 0%, #a16207 100%);
+                color: #fde68a;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-content">
+                <div class="profile-avatar" aria-label="Avatar">✈️</div>
+                <div class="header-info">
+                    <h1>@vaipromundoviagens</h1>
+                    <p><strong>Bio Oficial:</strong> 20 anos transformando desejos em Experiências 5 Estrelas. Somos afiliados a @embarkbeyondbrasil | @virtuosoltd | @forbestravelguide</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- STATS -->
+        <section class="stats-grid" aria-label="Estatísticas do Perfil">
+            <div class="stat-card">
+                <div class="stat-number">15.720</div>
+                <div class="stat-label">Seguidores</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1.405</div>
+                <div class="stat-label">Posts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1.788</div>
+                <div class="stat-label">Seguindo</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">20</div>
+                <div class="stat-label">Anos de Mercado</div>
+            </div>
+        </section>
+
+        <!-- PÚBLICO E TOM -->
+        <div class="grid-2">
+            <!-- PÚBLICO ALVO -->
+            <section class="card">
+                <h2>👥 Perfil do Público-Alvo</h2>
+
+                <div class="audience-item">
+                    <label class="audience-label">Faixa Etária</label>
+                    <div class="audience-value">32 a 55 anos</div>
+                </div>
+
+                <div class="audience-item">
+                    <label class="audience-label">Classe Social</label>
+                    <div class="audience-value">B+ e A</div>
+                </div>
+
+                <div class="audience-item">
+                    <label class="audience-label">Perfil Principal</label>
+                    <div class="audience-value">Viajante experiencial que busca vivência autêntica, não pacote genérico</div>
+                </div>
+
+                <div class="audience-item">
+                    <label class="audience-label">Segmento Secundário</label>
+                    <div class="audience-value">Gestores de empresas e viagens corporativas de alto padrão</div>
+                </div>
+
+                <div class="audience-item">
+                    <label class="audience-label">Dor Principal</label>
+                    <div class="audience-value">Medo de erros, falta de tempo para planejar, imprevistos sem suporte</div>
+                </div>
+
+                <div class="audience-item">
+                    <label class="audience-label">Desejo Central</label>
+                    <div class="audience-value">Viajar com tranquilidade, tudo resolvido, experiência 100% personalizada</div>
+                </div>
+            </section>
+
+            <!-- TOM DE VOZ -->
+            <section class="card">
+                <h2>🎤 Tom de Voz</h2>
+
+                <div class="tone-item">
+                    <label class="tone-label">Acolhedor</label>
+                    <div class="tone-example">"Vai tranquilo. Vai Pro Mundo!" — Assinatura recorrente</div>
+                </div>
+
+                <div class="tone-item">
+                    <label class="tone-label">Consultivo</label>
+                    <div class="tone-example">"Planejar vai muito além de escolher destino" — Educativo</div>
+                </div>
+
+                <div class="tone-item">
+                    <label class="tone-label">Humanizado</label>
+                    <div class="tone-example">Dane, Annie, Paulo, Regiane aparecem com nome e rosto</div>
+                </div>
+
+                <div class="tone-item">
+                    <label class="tone-label">Aspiracional</label>
+                    <div class="tone-example">"Transformando desejos em experiências 5 estrelas"</div>
+                </div>
+
+                <div class="tone-item">
+                    <label class="tone-label">Educativo</label>
+                    <div class="tone-example">"Achei mais barato no site... mas será que está mesmo?"</div>
+                </div>
+            </section>
+        </div>
+
+        <!-- FUNIL DE CONTEÚDO -->
+        <section class="card" style="margin-bottom: var(--spacing-2xl);">
+            <h2>📊 Conteúdos por Funil de Vendas</h2>
+
+            <div class="funnel-stage">
+                <h4>🎯 TOPO DE FUNIL — Inspiração e Descoberta</h4>
+                <p>Objetivo: gerar desejo, alcançar novos, inspirar | Formato: Vídeos, Carrossel, Imagens aspiracionais</p>
+                <div class="funnel-items">
+                    <div class="funnel-item">Destinos (Japão, Chile, Canadá)</div>
+                    <div class="funnel-item">Curiosidades culturais</div>
+                    <div class="funnel-item">Tendências de viagem</div>
+                    <div class="funnel-item">Conteúdo leve/humor</div>
+                    <div class="funnel-item">Paisagens aspiracionais</div>
+                    <div class="funnel-item">Descoberta de lugares</div>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <h4>📈 MEIO DE FUNIL — Educação e Confiança</h4>
+                <p>Objetivo: educar, quebrar objeções, construir autoridade | Formato: Vídeos educativos, Carrosséis, Stories</p>
+                <div class="funnel-items">
+                    <div class="funnel-item">Dicas práticas</div>
+                    <div class="funnel-item">Conteúdo de equipe</div>
+                    <div class="funnel-item">Parcerias</div>
+                    <div class="funnel-item">Educação setor</div>
+                    <div class="funnel-item">Institucional</div>
+                    <div class="funnel-item">Ferramentas</div>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <h4>💰 FUNDO DE FUNIL — Conversão e Fidelização</h4>
+                <p>Objetivo: gerar contato, fechar venda, fidelizar | Formato: Reels com CTA, Vídeos de depoimento</p>
+                <div class="funnel-items">
+                    <div class="funnel-item">Cases reais</div>
+                    <div class="funnel-item">CTA direto</div>
+                    <div class="funnel-item">Urgência</div>
+                    <div class="funnel-item">Produtos</div>
+                    <div class="funnel-item">Reviews</div>
+                    <div class="funnel-item">B2B</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TOP POSTS -->
+        <section class="card" style="margin-bottom: var(--spacing-2xl);">
+            <h2>🔥 Posts com Maior Engajamento</h2>
+            <table class="engagement-table" role="table" aria-label="Posts com maior engajamento">
+                <thead>
+                    <tr>
+                        <th scope="col">Post</th>
+                        <th scope="col">Curtidas</th>
+                        <th scope="col">Comentários</th>
+                        <th scope="col">Razão do Sucesso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Setor de Qualidade (Dane e Annie)</strong></td>
+                        <td><span class="highlight">117</span></td>
+                        <td>18</td>
+                        <td>Humanização da equipe 👥</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Especialistas em Aéreo (Regiane)</strong></td>
+                        <td><span class="highlight">50</span></td>
+                        <td>14</td>
+                        <td>Equipe + educação</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sales Blitz TAP Portugal</strong></td>
+                        <td><span class="highlight">50</span></td>
+                        <td>4</td>
+                        <td>Parceria e autoridade</td>
+                    </tr>
+                    <tr>
+                        <td><strong>20 Anos de Agência</strong></td>
+                        <td><span class="highlight">55</span></td>
+                        <td>10</td>
+                        <td>Marco institucional emocional</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Natal no Magic Kingdom</strong></td>
+                        <td><span class="highlight">43</span></td>
+                        <td>4</td>
+                        <td>Conteúdo aspiracional/familiar</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Visita à Sede</strong></td>
+                        <td><span class="highlight">40</span></td>
+                        <td>1</td>
+                        <td>CTA direto + humanização</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- HASHTAGS E INSIGHTS -->
+        <div class="grid-2">
+            <section class="card">
+                <h2>#️⃣ Hashtags Principais</h2>
+                <div class="hashtag-cloud" role="list">
+                    <span class="hashtag" role="listitem">#vaipromundoviagens</span>
+                    <span class="hashtag" role="listitem">#vaipromundo</span>
+                    <span class="hashtag" role="listitem">#agenciadeviagens</span>
+                    <span class="hashtag" role="listitem">#roteirospersonalizados</span>
+                    <span class="hashtag" role="listitem">#viagenspersonalizadas</span>
+                    <span class="hashtag" role="listitem">#embarkbeyondbrasil</span>
+                    <span class="hashtag" role="listitem">#virtuoso</span>
+                    <span class="hashtag" role="listitem">#forbestravelguide</span>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>💡 Diagnóstico Estratégico</h2>
+
+                <h3>✅ Pontos Fortes Validados</h3>
+                <div class="insight">
+                    <strong>Humanização de Equipe</strong>
+                    Posts com Dane, Annie, Regiane têm 3-5x mais engajamento que destino puro
+                </div>
+
+                <div class="insight">
+                    <strong>Storytelling de Clientes</strong>
+                    Cases do "Francisco em Fiji" e "Fabríccio e Camila" convertem bem para fundo de funil
+                </div>
+
+                <div class="insight">
+                    <strong>Identidade Verbal</strong>
+                    "Vai tranquilo. Vai Pro Mundo!" é memorável e diferencia fortemente
+                </div>
+
+                <h3>🎯 Oportunidades de Crescimento</h3>
+                <div class="insight">
+                    <strong>Aumentar Conteúdo de Equipe</strong>
+                    É o maior ativo (117 curtidas) mas subutilizado. Aumentar de 1-2 para 4-5 por semana
+                </div>
+
+                <div class="insight">
+                    <strong>Reels Curtos para Topo de Funil</strong>
+                    Testar vídeos de 15-30s em vez de vídeos longos para destinos aspiracionais
+                </div>
+
+                <div class="insight">
+                    <strong>Depoimentos de Clientes em Vídeo</strong>
+                    Solicitar que clientes gravem sua experiência. Hoje contada pela agência
+                </div>
+
+                <div class="insight">
+                    <strong>Explorar Nicho B2B</strong>
+                    Viagens corporativas aparecem pouco mas são segmento altamente lucrativo
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p><strong>📊 Dashboard de Análise Instagram</strong></p>
+            <p>Dados obtidos via Instagram Graph API | Período: Dez/2025 – Abr/2026 | 50 posts analisados</p>
+            <p>Desenvolvido com foco em UX/UI, acessibilidade (WCAG 2.1 AA) e design responsivo</p>
+        </footer>
+    </div>
+</body>
+</html>

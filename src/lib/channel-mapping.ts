@@ -3,7 +3,7 @@ export type ChannelType = 'PAID_SOCIAL' | 'PAID_SEARCH' | 'ORGANIC_SEARCH' | 'OR
 /**
  * ChannelAttribution — classifica o canal pela ORIGEM do cliente:
  *  PAID_MEDIA          → investimento pago (Google, Meta/Social, Site) — base do ROI/CAC
- *  ORGANIC_COMMERCIAL  → esforço comercial sem investimento (Indicação, Networking, Prospecção)
+ *  ORGANIC_COMMERCIAL  → relacionamento cultivado: Indicação, Networking, Prospecção — sem investimento
  *  BRAND_BASE          → branding, recorrência ou origem ambígua (Espontaneamente, Pós-viagem)
  *  UNKNOWN             → não informado
  */
@@ -11,14 +11,14 @@ export type ChannelAttribution = 'PAID_MEDIA' | 'ORGANIC_COMMERCIAL' | 'BRAND_BA
 
 export const ATTRIBUTION_LABELS: Record<ChannelAttribution, string> = {
   PAID_MEDIA: 'Mídia Paga',
-  ORGANIC_COMMERCIAL: 'Orgânico Comercial',
+  ORGANIC_COMMERCIAL: 'Relacionamento Comercial',
   BRAND_BASE: 'Branding / Base',
   UNKNOWN: 'Não Informado',
 };
 
 export const ATTRIBUTION_DESCRIPTIONS: Record<ChannelAttribution, string> = {
   PAID_MEDIA: 'Receita atribuída a Google Ads, Redes Sociais e Site — base do cálculo de ROI e CAC',
-  ORGANIC_COMMERCIAL: 'Indicação, Networking e Prospecção Ativa — sem custo de mídia, excluído do ROI',
+  ORGANIC_COMMERCIAL: 'Contatos cultivados e diretos: Indicação, Networking, Prospecção Ativa — sem custo de mídia',
   BRAND_BASE: 'Espontâneo, recorrência e e-mail — origem ambígua (branding ou cliente fiel)',
   UNKNOWN: 'Canal não informado ou não mapeado',
 };

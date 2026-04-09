@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Análise Instagram @vaipromundoviagens</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .profile-pic {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+        }
+
+        .header-info h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header-info p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .card ul {
+            list-style: none;
+        }
+
+        .card li {
+            padding: 8px 0;
+            color: #555;
+            font-size: 13px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card li:last-child {
+            border-bottom: none;
+        }
+
+        .tone-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .tone-label {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 12px;
+        }
+
+        .tone-example {
+            color: #666;
+            font-size: 13px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .funnel-stage {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .funnel-stage h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .funnel-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .funnel-item {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #555;
+            border: 1px solid #ddd;
+        }
+
+        .engagement-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .engagement-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .engagement-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        .engagement-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .hashtag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .hashtag {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .insight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .audience-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .audience-label {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .audience-value {
+            color: #555;
+            font-size: 13px;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+
+        .highlight {
+            background: #ffffcc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .funnel-items {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <div class="header-content">
+                <div class="profile-pic">✈️</div>
+                <div class="header-info">
+                    <h1>@vaipromundoviagens</h1>
+                    <p><strong>Bio:</strong> 20 anos transformando desejos em Experiências 5 Estrelas. Somos afiliados a @embarkbeyondbrasil | @virtuosoltd | @forbestravelguide</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">15.720</div>
+                <div class="stat-label">Seguidores</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1.405</div>
+                <div class="stat-label">Posts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1.788</div>
+                <div class="stat-label">Seguindo</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">20</div>
+                <div class="stat-label">Anos de Mercado</div>
+            </div>
+        </div>
+
+        <!-- PÚBLICO E TOM -->
+        <div class="grid-2">
+            <!-- PÚBLICO ALVO -->
+            <div class="card">
+                <h2>👥 Perfil do Público-Alvo</h2>
+
+                <div class="audience-item">
+                    <div class="audience-label">Faixa Etária</div>
+                    <div class="audience-value">32 a 55 anos</div>
+                </div>
+
+                <div class="audience-item">
+                    <div class="audience-label">Classe Social</div>
+                    <div class="audience-value">B+ e A</div>
+                </div>
+
+                <div class="audience-item">
+                    <div class="audience-label">Perfil Principal</div>
+                    <div class="audience-value">Viajante experiencial — busca vivência, não pacote</div>
+                </div>
+
+                <div class="audience-item">
+                    <div class="audience-label">Segmento Secundário</div>
+                    <div class="audience-value">Gestores e empresas (viagens corporativas)</div>
+                </div>
+
+                <div class="audience-item">
+                    <div class="audience-label">Dor Principal</div>
+                    <div class="audience-value">Medo de erros, falta de tempo, imprevistos sem suporte</div>
+                </div>
+
+                <div class="audience-item">
+                    <div class="audience-label">Desejo</div>
+                    <div class="audience-value">Viajar com tranquilidade, tudo resolvido, personalizando</div>
+                </div>
+            </div>
+
+            <!-- TOM DE VOZ -->
+            <div class="card">
+                <h2>🎤 Tom de Voz</h2>
+
+                <div class="tone-item">
+                    <div class="tone-label">ACOLHEDOR</div>
+                    <div class="tone-example">"Vai tranquilo. Vai Pro Mundo!"</div>
+                </div>
+
+                <div class="tone-item">
+                    <div class="tone-label">CONSULTIVO</div>
+                    <div class="tone-example">"Planejar vai muito além de escolher destino"</div>
+                </div>
+
+                <div class="tone-item">
+                    <div class="tone-label">HUMANIZADO</div>
+                    <div class="tone-example">Colaboradores aparecem com nome: Dane, Annie, Paulo</div>
+                </div>
+
+                <div class="tone-item">
+                    <div class="tone-label">ASPIRACIONAL</div>
+                    <div class="tone-example">"Transformando desejos em experiências 5 estrelas"</div>
+                </div>
+
+                <div class="tone-item">
+                    <div class="tone-label">EDUCATIVO</div>
+                    <div class="tone-example">"Achei mais barato... mas será que está mesmo?"</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FUNIL DE CONTEÚDO -->
+        <div class="card" style="margin-bottom: 30px;">
+            <h2>📊 Conteúdos por Funil de Vendas</h2>
+
+            <div class="funnel-stage">
+                <h4>🎯 TOPO DE FUNIL — Inspiração e Descoberta</h4>
+                <p style="color: #666; margin-bottom: 12px; font-size: 13px;">Objetivo: gerar desejo, alcançar novos, inspirar</p>
+                <div class="funnel-items">
+                    <div class="funnel-item">Destinos (Japão, Chile, Canadá)</div>
+                    <div class="funnel-item">Curiosidades culturais</div>
+                    <div class="funnel-item">Tendências de viagem</div>
+                    <div class="funnel-item">Conteúdo leve/humor</div>
+                    <div class="funnel-item">Paisagens aspiracionais</div>
+                    <div class="funnel-item">Descoberta de lugares</div>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <h4>📈 MEIO DE FUNIL — Educação e Confiança</h4>
+                <p style="color: #666; margin-bottom: 12px; font-size: 13px;">Objetivo: educar, quebrar objeções, construir confiança</p>
+                <div class="funnel-items">
+                    <div class="funnel-item">Dicas práticas de viagem</div>
+                    <div class="funnel-item">Conteúdo de equipe (humanização)</div>
+                    <div class="funnel-item">Parcerias e autoridade</div>
+                    <div class="funnel-item">Educação sobre o setor</div>
+                    <div class="funnel-item">Institucional (20 anos, prêmios)</div>
+                    <div class="funnel-item">Apresentação de ferramentas</div>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <h4>💰 FUNDO DE FUNIL — Conversão e Fidelização</h4>
+                <p style="color: #666; margin-bottom: 12px; font-size: 13px;">Objetivo: gerar contato, fechar venda, fidelizar</p>
+                <div class="funnel-items">
+                    <div class="funnel-item">Cases de clientes (storytelling)</div>
+                    <div class="funnel-item">CTA direto e urgência</div>
+                    <div class="funnel-item">Produtos específicos</div>
+                    <div class="funnel-item">Depoimentos/reviews premium</div>
+                    <div class="funnel-item">Programa de fidelização</div>
+                    <div class="funnel-item">Viagens corporativas B2B</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOP POSTS -->
+        <div class="card" style="margin-bottom: 30px;">
+            <h2>🔥 Posts com Maior Engajamento</h2>
+            <table class="engagement-table">
+                <thead>
+                    <tr>
+                        <th>Post</th>
+                        <th>Curtidas</th>
+                        <th>Comentários</th>
+                        <th>Por que performou bem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Setor de Qualidade (Dane e Annie)</strong></td>
+                        <td><span class="highlight">117</span></td>
+                        <td>18</td>
+                        <td>Humanização da equipe 👥</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Especialistas em Aéreo (Regiane)</strong></td>
+                        <td><span class="highlight">50</span></td>
+                        <td>14</td>
+                        <td>Equipe + educação</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sales Blitz TAP Portugal</strong></td>
+                        <td><span class="highlight">50</span></td>
+                        <td>4</td>
+                        <td>Parceria e autoridade</td>
+                    </tr>
+                    <tr>
+                        <td><strong>20 Anos de Agência</strong></td>
+                        <td><span class="highlight">55</span></td>
+                        <td>10</td>
+                        <td>Marco institucional emocional</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Natal no Magic Kingdom</strong></td>
+                        <td><span class="highlight">43</span></td>
+                        <td>4</td>
+                        <td>Conteúdo aspiracional/familiar</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Visita à Sede</strong></td>
+                        <td><span class="highlight">40</span></td>
+                        <td>1</td>
+                        <td>CTA direto + humanização</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- HASHTAGS E INSIGHTS -->
+        <div class="grid-2">
+            <div class="card">
+                <h2>#️⃣ Hashtags Principais</h2>
+                <div class="hashtag-cloud">
+                    <span class="hashtag">#vaipromundoviagens</span>
+                    <span class="hashtag">#vaipromundo</span>
+                    <span class="hashtag">#agenciadeviagens</span>
+                    <span class="hashtag">#roteirospersonalizados</span>
+                    <span class="hashtag">#viagenspersonalizadas</span>
+                    <span class="hashtag">#embarkbeyondbrasil</span>
+                    <span class="hashtag">#virtuoso</span>
+                    <span class="hashtag">#forbestravelguide</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>💡 Diagnóstico Estratégico</h2>
+
+                <h3>✅ Pontos Fortes</h3>
+                <div class="insight">
+                    <strong>Humanização de Equipe</strong> — Posts com Dane, Annie, Regiane, Paulo têm 3-5x mais engajamento que posts de destino puro
+                </div>
+
+                <div class="insight">
+                    <strong>Storytelling de Clientes</strong> — Cases do "Francisco em Fiji" e "Fabríccio e Camila" convertem bem
+                </div>
+
+                <div class="insight">
+                    <strong>Identidade Verbal Sólida</strong> — "Vai tranquilo. Vai Pro Mundo!" é memorável e diferencia
+                </div>
+
+                <h3>🎯 Oportunidades</h3>
+                <div class="insight">
+                    <strong>Aumentar Conteúdo de Equipe</strong> — É o maior ativo mas ainda subutilizado. Aumentar frequência de 1-2 para 4-5 por semana
+                </div>
+
+                <div class="insight">
+                    <strong>Reels mais Curtos</strong> — Maioria dos vídeos é longa. Testar reels de 15-30s para topo de funil
+                </div>
+
+                <div class="insight">
+                    <strong>Depoimentos de Clientes em Vídeo</strong> — Hoje contada pela agência. Solicitar que clientes façam vídeo contando a experiência
+                </div>
+
+                <div class="insight">
+                    <strong>Explorar Nicho B2B</strong> — Viagens corporativas aparecem pouco mas são segmento altamente lucrativo
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>📊 Dashboard gerado automaticamente via Instagram Graph API | Dados de Dez/2025 - Abr/2026</p>
+            <p>Análise realizada para @vaipromundoviagens</p>
+        </footer>
+    </div>
+</body>
+</html>

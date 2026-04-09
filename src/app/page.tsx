@@ -459,7 +459,7 @@ export default function OverviewPage() {
                     } else if (group.attribution === 'ORGANIC_COMMERCIAL') {
                       // Título do grupo orgânico
                       rows.push(
-                        <Row key="organic" dot="bg-amber-400" text="text-amber-700" label="Orgânico Comercial"
+                        <Row key="organic" dot="bg-amber-400" text="text-amber-700" label="Relacionamento Comercial"
                           receita={group.receita} receitaPct={group.receitaPct} vendas={group.vendas}
                           bar="bg-amber-400" />
                       );

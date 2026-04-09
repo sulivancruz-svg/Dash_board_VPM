@@ -24,10 +24,10 @@ const ATTR_STYLE: Record<ChannelAttribution, { badge: string; border: string; bg
 };
 
 const ATTR_LABEL: Record<ChannelAttribution, string> = {
-  PAID_MEDIA: 'MÃƒÂ­dia Paga',
-  ORGANIC_COMMERCIAL: 'OrgÃƒÂ¢nico Comercial',
+  PAID_MEDIA: 'Mídia Paga',
+  ORGANIC_COMMERCIAL: 'Relacionamento Comercial',
   BRAND_BASE: 'Branding / Base',
-  UNKNOWN: 'NÃƒÂ£o Informado',
+  UNKNOWN: 'Não Informado',
 };
 
 
@@ -362,8 +362,8 @@ export default function FunnelPage() {
                   <strong>Branding/Base (Espontaneamente)</strong> representa clientes que fizeram contato por conta própria.
                   Pode ser resultado do trabalho de branding, fidelização ou tráfego orgânico acumulado.
                   Não é incluído no ROI de mídia paga, pois não há investimento direto identificável.
-                  <strong> Orgânico Comercial</strong> (Indicação, Networking, Prospecção) também é excluído do ROI:
-                  é resultado de relacionamento, não de investimento em mídia.
+                  <strong>Relacionamento Comercial</strong> (Indicação, Networking, Prospecção) também é excluído do ROI:
+                  é resultado de relacionamento cultivado, não de investimento em mídia.
                 </p>
               </div>
             </div>
