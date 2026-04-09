@@ -15,6 +15,7 @@ const navItems = [
   { href: '/funnel', label: 'Funil Comercial', icon: 'FC' },
   { href: '/channels', label: 'Canais e Receita', icon: 'CR' },
   { href: '/intelligence', label: 'Inteligencia', icon: '✦' },
+  { href: '/livia-analysis', label: 'Análise Livia (TESTE)', icon: 'LA' },
   { href: '/historical-imports', label: 'Uploads Historicos', icon: 'UH' },
 ];
 

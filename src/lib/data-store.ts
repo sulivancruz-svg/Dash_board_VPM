@@ -34,6 +34,8 @@ export interface PipedriveDealRecord {
   status: string;
   receita: number;
   hasMondeBilling: boolean;
+  ownerId?: number | null;
+  ownerName?: string | null;
 }
 
 export interface PipedriveStore {
