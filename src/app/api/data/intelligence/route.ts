@@ -3,6 +3,8 @@ import { getPipedriveData, getSdrData } from '@/lib/data-store';
 import { blobGetJson } from '@/lib/storage';
 import { attributeChannel } from '@/lib/channel-mapping';
 import type { GoogleAdsStoredData } from '@/lib/google-ads-store';
+import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
+import type { DateRange } from '@/lib/date-range';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -148,22 +150,15 @@ export interface IntelligenceData {
 
 export async function GET(req: NextRequest) {
   try {
-    // Parâmetros de período (start/end ISO ou period em dias)
+    // Parâmetros de período
     const sp    = req.nextUrl.searchParams;
     const start = sp.get('start') ?? null;
     const end   = sp.get('end')   ?? null;
 
-    // Filtra deal por data de criação dentro do período selecionado
-    const inRange = (dateStr: string | null): boolean => {
-      if (!dateStr) return true;           // sem data → inclui sempre
-      if (!start && !end) return true;     // sem filtro → inclui tudo
-      const d = dateStr.substring(0, 10); // "2026-03-15"
-      if (start && d < start) return false;
-      if (end   && d > end)   return false;
-      return true;
-    };
+    const range: DateRange | undefined =
+      start && end ? { start, end } : undefined;
 
-    // Meses dentro do range (para filtrar monthly e google months)
+    // Meses dentro do range (para filtrar google months e anomalias)
     const monthInRange = (monthKey: string): boolean => {
       if (!start && !end) return true;
       const startMk = start ? start.substring(0, 7) : null;
@@ -192,72 +187,40 @@ export async function GET(req: NextRequest) {
 
     if (!pipedriveData) return NextResponse.json(empty);
 
-    // ── Deals individuais (granulares) ───────────────────────────────────────
-    // Prioridade: mondeDeals (faturamento confirmado) → pipelineDeals → fallback channels
-    const rawDeals = [
-      ...(pipedriveData.mondeDeals || []),
-      ...(pipedriveData.pipelineDeals || []),
-    ];
-    // Deduplica por ID e aplica filtro de período
-    const seen = new Set<string>();
-    const deals = rawDeals.filter(d => {
-      if (!d.receita || !d.createdDate) return false;
-      if (seen.has(d.id)) return false;
-      seen.add(d.id);
-      return inRange(d.createdDate);
-    });
+    // ── Fonte única de verdade: mesma função usada por todas as outras páginas ──
+    const metrics = getPipedriveMetricsForRange(pipedriveData, range);
+    if (!metrics) return NextResponse.json(empty);
+
+    // Deals com receita real (mondeDeals filtrados pelo período)
+    const deals = metrics.mondeDeals;
 
     // ──────────────────────────────────────────────────────────────────────────
-    // 1. RANKING DE CANAIS
+    // 1. RANKING DE CANAIS — usa exatamente os mesmos dados de Canais e Receita
     // ──────────────────────────────────────────────────────────────────────────
-    const channelMap = new Map<string, { receita: number; deals: number }>();
+    const grandTotal = metrics.channels.reduce((s, c) => s + c.receita, 0);
 
-    if (deals.length > 0) {
-      for (const d of deals) {
-        const canal = d.canal || 'Não informado';
-        const cur = channelMap.get(canal) ?? { receita: 0, deals: 0 };
-        cur.receita += d.receita;
-        cur.deals   += 1;
-        channelMap.set(canal, cur);
-      }
-    } else {
-      // Fallback: filtra monthly por período e distribui channels proporcionalmente
-      const filteredMonthly = (pipedriveData.monthly || []).filter(m => monthInRange(m.monthKey));
-      const filteredRevenue = filteredMonthly.reduce((s, m) => s + m.receita, 0);
-      const totalRevAll     = pipedriveData.totalRevenue || 1;
-      for (const ch of pipedriveData.channels || []) {
-        const pct = totalRevAll > 0 ? ch.receita / totalRevAll : 0;
-        channelMap.set(ch.canal, {
-          receita: Math.round(filteredRevenue * pct || ch.receita),
-          deals:   ch.vendas,
-        });
-      }
-    }
-
-    const grandTotal = Array.from(channelMap.values()).reduce((s, c) => s + c.receita, 0);
-
-    const channelRanking: ChannelRanking[] = Array.from(channelMap.entries())
-      .map(([canal, data]) => ({
-        canal,
-        attribution: attributeChannel(canal),
-        receita: Math.round(data.receita),
-        deals: data.deals,
-        ticketMedio: data.deals > 0 ? Math.round(data.receita / data.deals) : 0,
-        pctReceita: grandTotal > 0 ? Math.round((data.receita / grandTotal) * 1000) / 10 : 0,
+    const channelRanking: ChannelRanking[] = metrics.channels
+      .map(ch => ({
+        canal: ch.canal,
+        attribution: attributeChannel(ch.canal),
+        receita: Math.round(ch.receita),
+        deals: ch.vendas,
+        ticketMedio: ch.ticket ?? (ch.vendas > 0 ? Math.round(ch.receita / ch.vendas) : 0),
+        pctReceita: grandTotal > 0 ? Math.round((ch.receita / grandTotal) * 1000) / 10 : 0,
       }))
-      .sort((a, b) => b.ticketMedio - a.ticketMedio);   // ordenado por ticket (maior valor)
+      .sort((a, b) => b.ticketMedio - a.ticketMedio);
 
     // ──────────────────────────────────────────────────────────────────────────
     // 2. EVOLUÇÃO TEMPORAL POR CANAL (mês × canal)
-    //    Usa createdDate dos deals individuais — mês de criação da oportunidade
+    //    Usa mondeDeals filtrados pelo período (mesma fonte de receita)
     // ──────────────────────────────────────────────────────────────────────────
-    // Estrutura: canal → monthKey → { receita, deals }
     const temporal = new Map<string, Map<string, { receita: number; deals: number }>>();
     const allMonthSet = new Set<string>();
 
     if (deals.length > 0) {
       for (const d of deals) {
-        const monthKey = d.createdDate!.substring(0, 7);   // "2026-03"
+        if (!d.createdDate) continue;
+        const monthKey = d.createdDate.substring(0, 7);
         const canal    = d.canal || 'Não informado';
         allMonthSet.add(monthKey);
 
@@ -269,19 +232,9 @@ export async function GET(req: NextRequest) {
         mMap.set(monthKey, cur);
       }
     } else {
-      // Fallback: distribui proporcionalmente pelos meses filtrados
-      const totalRev = pipedriveData.totalRevenue || 1;
-      for (const m of (pipedriveData.monthly || []).filter(m => monthInRange(m.monthKey))) {
+      // Fallback: usa monthly já calculado pelo metrics (mesma lógica)
+      for (const m of metrics.monthly) {
         allMonthSet.add(m.monthKey);
-        for (const ch of pipedriveData.channels || []) {
-          const pct = ch.receita / totalRev;
-          if (!temporal.has(ch.canal)) temporal.set(ch.canal, new Map());
-          const mMap = temporal.get(ch.canal)!;
-          mMap.set(m.monthKey, {
-            receita: Math.round(m.receita * pct),
-            deals:   Math.round(m.deals * pct),
-          });
-        }
       }
     }
 
@@ -328,17 +281,13 @@ export async function GET(req: NextRequest) {
     // ──────────────────────────────────────────────────────────────────────────
     const googleMonths = googleAdsData?.months ?? [];
 
-    // Receita por mês de criação de oportunidade (do Pipedrive)
+    // Receita por mês — usa metrics.monthly (mesma fonte de verdade)
+    // Para regressão usamos histórico completo (sem filtro de período),
+    // pois precisamos de mais pontos para a correlação ser confiável.
+    const metricsAll = getPipedriveMetricsForRange(pipedriveData, undefined);
     const pipeMonthMap = new Map<string, number>();
-    if (deals.length > 0) {
-      for (const d of deals) {
-        const mk = d.createdDate!.substring(0, 7);
-        pipeMonthMap.set(mk, (pipeMonthMap.get(mk) ?? 0) + d.receita);
-      }
-    } else {
-      for (const m of pipedriveData.monthly || []) {
-        pipeMonthMap.set(m.monthKey, m.receita);
-      }
+    for (const m of (metricsAll?.monthly ?? metrics.monthly)) {
+      pipeMonthMap.set(m.monthKey, m.receita);
     }
 
     const projPoints: ProjectionPoint[] = [];
@@ -396,7 +345,8 @@ export async function GET(req: NextRequest) {
     // 4. SCORE DE EFICIÊNCIA — apenas canais pagos
     //    Cruza receita atribuída ao canal × investimento real
     // ──────────────────────────────────────────────────────────────────────────
-    const paidChannels = (pipedriveData.channels || []).filter(
+    // Usa metrics.channels — mesma fonte que as outras páginas
+    const paidChannels = metrics.channels.filter(
       ch => attributeChannel(ch.canal) === 'PAID_MEDIA',
     );
 
@@ -485,17 +435,16 @@ export async function GET(req: NextRequest) {
       });
     };
 
-    // Receita mensal
-    if (pipedriveData.monthly?.length) {
-      const sorted = [...pipedriveData.monthly].sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+    // Para anomalias usa histórico completo (sem filtro de período) para ter
+    // mais pontos e detectar desvios com maior precisão estatística
+    const allMonthly = (metricsAll?.monthly ?? metrics.monthly)
+      .sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+    if (allMonthly.length) {
       addMetric('Receita Mensal', 'currency',
-        sorted.map(m => ({ monthKey: m.monthKey, label: `${m.month}/${m.year}`, value: m.receita })));
-    }
-    // Deals mensais
-    if (pipedriveData.monthly?.length) {
-      const sorted = [...pipedriveData.monthly].sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+        allMonthly.map(m => ({ monthKey: m.monthKey, label: `${m.month}/${m.year}`, value: m.receita })));
       addMetric('Deals Fechados', 'number',
-        sorted.map(m => ({ monthKey: m.monthKey, label: `${m.month}/${m.year}`, value: m.deals })));
+        allMonthly.map(m => ({ monthKey: m.monthKey, label: `${m.month}/${m.year}`, value: m.deals })));
     }
     // Leads SDR
     if (sdrData?.months?.length) {
