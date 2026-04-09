@@ -111,6 +111,7 @@ export async function blobSetJson(key: string, value: unknown): Promise<void> {
     await put(`${key}.json`, JSON.stringify(value), {
       access: 'private',
       addRandomSuffix: false,
+      allowOverwrite: true,
       contentType: 'application/json',
     } as Parameters<typeof put>[2]);
     return;
@@ -148,6 +149,7 @@ export async function blobUploadFile(
     const result = await put(blobPath, buffer, {
       access,
       addRandomSuffix: false,
+      allowOverwrite: true,
       contentType,
     } as Parameters<typeof put>[2]);
     return result.url;

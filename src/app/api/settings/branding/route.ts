@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
       updatedAt: settings.updatedAt,
     });
   } catch (error) {
-    console.error('Branding settings error:', error);
-    return NextResponse.json({ error: 'Erro ao salvar identidade visual' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Branding settings error:', msg, error instanceof Error ? error.stack : '');
+    return NextResponse.json({ error: 'Erro ao salvar identidade visual', detail: msg }, { status: 500 });
   }
 }
