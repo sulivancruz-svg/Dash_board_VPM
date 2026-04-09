@@ -88,6 +88,13 @@ interface OverviewData {
       receitaPct: number;
       usedForRoi: boolean;
     }>;
+    organicSubChannels: Array<{
+      key: string;
+      label: string;
+      receita: number;
+      vendas: number;
+      receitaPct: number;
+    }>;
   };
   sdr: {
     enabled: boolean;
@@ -392,42 +399,101 @@ export default function OverviewPage() {
               {/* Ranked list — barra horizontal proporcional */}
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 {(() => {
-                  const ATTR_STYLE: Record<string, { bar: string; dot: string; text: string; label: string }> = {
-                    PAID_MEDIA:         { bar: 'bg-blue-500',   dot: 'bg-blue-500',   text: 'text-blue-700',   label: 'Mídia Paga' },
-                    ORGANIC_COMMERCIAL: { bar: 'bg-amber-400',  dot: 'bg-amber-400',  text: 'text-amber-700',  label: 'Orgânico' },
-                    BRAND_BASE:         { bar: 'bg-violet-500', dot: 'bg-violet-500', text: 'text-violet-700', label: 'Base / Branding' },
-                    UNKNOWN:            { bar: 'bg-slate-300',  dot: 'bg-slate-400',  text: 'text-slate-500',  label: 'Não informado' },
-                  };
-                  const groups = (data?.pipedrive.byAttribution || []).filter(g => g.receita > 0);
-                  const maxPct = groups.length > 0 ? Math.max(...groups.map(g => g.receitaPct)) : 100;
-                  return groups.map(group => {
-                    const style = ATTR_STYLE[group.attribution] || ATTR_STYLE.UNKNOWN;
-                    const barWidth = maxPct > 0 ? (group.receitaPct / maxPct) * 100 : 0;
+                  const mondeRevTotal = data?.pipedrive.mondeRevenue || 0;
+                  const maxPctAll = mondeRevTotal > 0 ? 100 : 1;
+
+                  // Linha individual reutilizável
+                  const Row = ({
+                    dot, text, label, receita, receitaPct, vendas, bar, indent = false,
+                  }: {
+                    dot: string; text: string; label: string;
+                    receita: number; receitaPct: number; vendas: number;
+                    bar: string; indent?: boolean;
+                  }) => {
+                    const barWidth = maxPctAll > 0 ? (receitaPct / maxPctAll) * 100 : 0;
                     return (
-                      <div key={group.attribution} className="space-y-1.5">
-                        {/* Linha: label — valor — % */}
+                      <div className={`space-y-1.5 ${indent ? 'pl-4' : ''}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${style.dot}`} />
-                            <span className={`text-xs font-semibold truncate ${style.text}`}>{style.label}</span>
+                            <span className={`flex-shrink-0 rounded-full ${indent ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${dot}`} />
+                            <span className={`truncate font-semibold ${indent ? 'text-[11px]' : 'text-xs'} ${text}`}>{label}</span>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                            <span className="text-sm font-bold text-slate-800">{fmt(group.receita, 'currency')}</span>
-                            <span className="text-xs font-medium text-slate-400 w-9 text-right">{fmt(group.receitaPct, 'pct')}</span>
+                            <span className={`font-bold text-slate-800 ${indent ? 'text-xs' : 'text-sm'}`}>{fmt(receita, 'currency')}</span>
+                            <span className="text-xs font-medium text-slate-400 w-9 text-right">{fmt(receitaPct, 'pct')}</span>
                           </div>
                         </div>
-                        {/* Barra proporcional + vendas */}
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full ${style.bar} rounded-full transition-all`} style={{ width: `${barWidth}%` }} />
+                          <div className={`flex-1 bg-slate-100 rounded-full overflow-hidden ${indent ? 'h-1.5' : 'h-2.5'}`}>
+                            <div className={`h-full ${bar} rounded-full transition-all`} style={{ width: `${barWidth}%` }} />
                           </div>
                           <span className="text-[10px] text-slate-400 w-14 text-right flex-shrink-0">
-                            {fmt(group.vendas)} venda{group.vendas !== 1 ? 's' : ''}
+                            {fmt(vendas)} venda{vendas !== 1 ? 's' : ''}
                           </span>
                         </div>
                       </div>
                     );
-                  });
+                  };
+
+                  const byAttr = data?.pipedrive.byAttribution || [];
+                  const organicSubs = data?.pipedrive.organicSubChannels || [];
+
+                  // Cores por sub-canal orgânico
+                  const ORGANIC_SUB_STYLE: Record<string, { dot: string; text: string; bar: string }> = {
+                    indicacao:  { dot: 'bg-amber-400',  text: 'text-amber-700',  bar: 'bg-amber-400' },
+                    networking: { dot: 'bg-orange-400', text: 'text-orange-700', bar: 'bg-orange-400' },
+                    prospeccao: { dot: 'bg-yellow-500', text: 'text-yellow-700', bar: 'bg-yellow-500' },
+                  };
+
+                  const rows: React.ReactNode[] = [];
+
+                  for (const group of byAttr) {
+                    if (group.receita <= 0) continue;
+
+                    if (group.attribution === 'PAID_MEDIA') {
+                      rows.push(
+                        <Row key="paid" dot="bg-blue-500" text="text-blue-700" label="Mídia Paga"
+                          receita={group.receita} receitaPct={group.receitaPct} vendas={group.vendas}
+                          bar="bg-blue-500" />
+                      );
+                    } else if (group.attribution === 'ORGANIC_COMMERCIAL') {
+                      // Título do grupo orgânico
+                      rows.push(
+                        <Row key="organic" dot="bg-amber-400" text="text-amber-700" label="Orgânico Comercial"
+                          receita={group.receita} receitaPct={group.receitaPct} vendas={group.vendas}
+                          bar="bg-amber-400" />
+                      );
+                      // Sub-canais recuados
+                      if (organicSubs.length > 0) {
+                        rows.push(
+                          <div key="organic-subs" className="space-y-2 mt-1">
+                            {organicSubs.map(sub => {
+                              const style = ORGANIC_SUB_STYLE[sub.key] || { dot: 'bg-slate-400', text: 'text-slate-500', bar: 'bg-slate-400' };
+                              return (
+                                <Row key={sub.key} dot={style.dot} text={style.text} label={sub.label}
+                                  receita={sub.receita} receitaPct={sub.receitaPct} vendas={sub.vendas}
+                                  bar={style.bar} indent />
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                    } else if (group.attribution === 'BRAND_BASE') {
+                      rows.push(
+                        <Row key="brand" dot="bg-violet-500" text="text-violet-700" label="Base / Branding"
+                          receita={group.receita} receitaPct={group.receitaPct} vendas={group.vendas}
+                          bar="bg-violet-500" />
+                      );
+                    } else if (group.attribution === 'UNKNOWN') {
+                      rows.push(
+                        <Row key="unknown" dot="bg-slate-400" text="text-slate-500" label="Não informado"
+                          receita={group.receita} receitaPct={group.receitaPct} vendas={group.vendas}
+                          bar="bg-slate-300" />
+                      );
+                    }
+                  }
+
+                  return rows;
                 })()}
               </div>
             </div>

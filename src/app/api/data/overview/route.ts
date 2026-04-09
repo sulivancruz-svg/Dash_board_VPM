@@ -178,6 +178,36 @@ export async function GET(req: NextRequest) {
       receitaPct: mondeRevenue > 0 ? Math.round((attrAccum[attr].receita / mondeRevenue) * 1000) / 10 : 0,
     }));
 
+    // Sub-breakdown dos canais ORGANIC_COMMERCIAL: Indicação, Networking, Prospecção
+    const organicSubAccum: Record<string, { label: string; receita: number; vendas: number }> = {
+      indicacao:  { label: 'Indicação',  receita: 0, vendas: 0 },
+      networking: { label: 'Networking', receita: 0, vendas: 0 },
+      prospeccao: { label: 'Prospecção', receita: 0, vendas: 0 },
+    };
+    for (const c of (pipedriveMetrics?.channels || [])) {
+      if (attributeChannel(c.canal) !== 'ORGANIC_COMMERCIAL') continue;
+      const canal = c.canal || '';
+      if (/indica[çc][aã]o|indicado/i.test(canal)) {
+        organicSubAccum.indicacao.receita += c.receita || 0;
+        organicSubAccum.indicacao.vendas  += c.vendas  || 0;
+      } else if (/networking|relacionamento/i.test(canal)) {
+        organicSubAccum.networking.receita += c.receita || 0;
+        organicSubAccum.networking.vendas  += c.vendas  || 0;
+      } else if (/prospec[çc][aã]o|agente/i.test(canal)) {
+        organicSubAccum.prospeccao.receita += c.receita || 0;
+        organicSubAccum.prospeccao.vendas  += c.vendas  || 0;
+      }
+    }
+    const organicSubChannels = Object.entries(organicSubAccum)
+      .filter(([, v]) => v.receita > 0 || v.vendas > 0)
+      .map(([key, v]) => ({
+        key,
+        label: v.label,
+        receita: Math.round(v.receita * 100) / 100,
+        vendas: v.vendas,
+        receitaPct: mondeRevenue > 0 ? Math.round((v.receita / mondeRevenue) * 1000) / 10 : 0,
+      }));
+
     // Top canais por receita (Pipedrive/Monde)
     const pipedriveChannels = (pipedriveMetrics?.channels || [])
       .slice(0, 8)
@@ -275,6 +305,7 @@ export async function GET(req: NextRequest) {
         // ── Breakdown por atribuição de canal ──────────
         // Receita dividida por origem: Mídia Paga, Orgânico, Branding, Desconhecido
         byAttribution,
+        organicSubChannels,  // Indicação / Networking / Prospecção individualmente
         receitaMidiaPaga,    // base do ROI/CAC (Google + Redes Sociais)
         receitaOrganica,     // Indicação + Networking + Prospecção (sem custo de mídia)
         receitaBranding,     // Espontaneamente + Site + Email + Pós-viagem (ambíguo)
