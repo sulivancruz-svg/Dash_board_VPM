@@ -22,11 +22,38 @@ export async function GET() {
       return new NextResponse('Logo nao configurada', { status: 404 });
     }
 
-    const absolutePath = path.join(process.cwd(), 'public', settings.logoPath.replace(/^\//, '').replace(/\//g, path.sep));
+    // Production: logoPath is a Vercel Blob URL — proxy with Bearer auth
+    if (settings.logoPath.startsWith('https://')) {
+      const res = await fetch(settings.logoPath, {
+        headers: {
+          Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ''}`,
+        },
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        console.error('Blob logo fetch failed:', res.status, await res.text().catch(() => ''));
+        return new NextResponse('Logo nao encontrada no blob store', { status: 404 });
+      }
+      const buffer = Buffer.from(await res.arrayBuffer());
+      const contentType = res.headers.get('content-type') || getContentType(settings.logoPath);
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+        },
+      });
+    }
+
+    // Local dev: logoPath is a filesystem path like /branding-assets/logo.png
+    const absolutePath = path.join(
+      process.cwd(),
+      'public',
+      settings.logoPath.replace(/^\//, '').replace(/\//g, path.sep),
+    );
     if (!fs.existsSync(absolutePath)) {
       return new NextResponse('Arquivo da logo nao encontrado', { status: 404 });
     }
-
     const buffer = fs.readFileSync(absolutePath);
     return new NextResponse(buffer, {
       status: 200,
