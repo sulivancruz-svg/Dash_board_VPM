@@ -9,24 +9,32 @@ import type { DateRange } from './date-range';
 /**
  * Normaliza nomes de canais confusos ou duplicados.
  * Resolve casos como "Espontaneamente + Indicação" → "Indicação"
+ * Consolida variações do mesmo canal (ex: com/sem "um")
  */
 function normalizeChannelName(rawCanal: string): string {
   if (!rawCanal) return '';
 
+  const clean = rawCanal.trim();
+
   // Canais com múltiplas origem separadas por "+" — prioriza Indicação/Networking/Prospecção
-  if (rawCanal.includes('+')) {
-    if (/indicação|indicado/i.test(rawCanal)) {
-      return 'Indicação - Indicado por Cliente VPM';
+  if (clean.includes('+')) {
+    if (/indicação|indicado/i.test(clean)) {
+      return 'Indicação - Indicado por um Cliente VPM';
     }
-    if (/networking|relacionamento/i.test(rawCanal)) {
+    if (/networking|relacionamento/i.test(clean)) {
       return 'Networking - Relacionamentos Pessoais';
     }
-    if (/prospec[çc][aã]o/i.test(rawCanal)) {
+    if (/prospec[çc][aã]o/i.test(clean)) {
       return 'Prospecção Agente - Agente Provocou o Contato';
     }
   }
 
-  return rawCanal;
+  // Consolida variações de Indicação (com/sem "um")
+  if (/indicação.*cliente\s?vpm/i.test(clean)) {
+    return 'Indicação - Indicado por um Cliente VPM';
+  }
+
+  return clean;
 }
 
 const MONTH_PT: Record<number, string> = {
