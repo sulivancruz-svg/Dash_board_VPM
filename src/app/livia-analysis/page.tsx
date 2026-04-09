@@ -24,15 +24,47 @@ export default function LiviaAnalysisPage() {
         const response = await fetch('/api/data/overview');
         if (!response.ok) throw new Error('Falha ao carregar dados');
 
-        // Aqui teríamos acesso aos dados do Pipedrive
-        // Por enquanto, vamos exibir a estrutura
+        const data = await response.json();
+        const pipedriveStore = data.pipedrive;
+
+        if (!pipedriveStore) {
+          throw new Error('Dados do Pipedrive não disponíveis');
+        }
+
+        // Filtra deals criados por Livia
+        const liviaDeals = [
+          ...(pipedriveStore.pipelineDeals || []),
+          ...(pipedriveStore.mondeDeals || []),
+        ].filter((deal) => deal.ownerName && deal.ownerName.toLowerCase().includes('livia'));
+
+        // Remove duplicatas (alguns deals aparecem em ambas as listas)
+        const uniqueDealsMap = new Map<string, PipedriveDealRecord>();
+        liviaDeals.forEach((deal) => {
+          if (!uniqueDealsMap.has(deal.id) || deal.hasMondeBilling) {
+            uniqueDealsMap.set(deal.id, deal);
+          }
+        });
+
+        const uniqueDeals = Array.from(uniqueDealsMap.values());
+        const dealsBecameSales = uniqueDeals.filter((deal) => deal.hasMondeBilling);
+        const conversionRate = uniqueDeals.length > 0
+          ? (dealsBecameSales.length / uniqueDeals.length) * 100
+          : 0;
+        const totalRevenue = dealsBecameSales.reduce((sum, deal) => sum + (deal.receita || 0), 0);
 
         setStats({
-          totalCreated: 0,
-          totalSalesInMonde: 0,
-          conversionRate: 0,
-          totalRevenue: 0,
-          deals: [],
+          totalCreated: uniqueDeals.length,
+          totalSalesInMonde: dealsBecameSales.length,
+          conversionRate,
+          totalRevenue,
+          deals: uniqueDeals.sort((a, b) => {
+            // Coloca as vendas realizadas primeiro
+            if (a.hasMondeBilling !== b.hasMondeBilling) {
+              return (b.hasMondeBilling ? 1 : 0) - (a.hasMondeBilling ? 1 : 0);
+            }
+            // Depois ordena por data (mais recentes primeiro)
+            return (b.createdDate || '').localeCompare(a.createdDate || '');
+          }),
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro desconhecido');

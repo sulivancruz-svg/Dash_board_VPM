@@ -205,6 +205,7 @@ function parseConsolidatedPipeRows(
   const keyDate = findKey('data oportunidade') ?? findKey('criado');
   const keyChannel = findKey('canal entrada') ?? findKey('canal');
   const keyStatus = findKey('status');
+  const keyOwner = findKey('responsavel') ?? findKey('owner') ?? findKey('proprietario') ?? findKey('dono');
 
   const deals = new Map<string, PipedriveDealRecord>();
 
@@ -219,6 +220,7 @@ function parseConsolidatedPipeRows(
       status: keyStatus && row[keyStatus] != null ? String(row[keyStatus]).toLowerCase().trim() : '',
       receita: 0,
       hasMondeBilling: false,
+      ownerName: keyOwner && row[keyOwner] ? String(row[keyOwner]).trim() : undefined,
     });
 
     deals.set(dealId, mergeDealRecords(deals.get(dealId), deal));
@@ -237,6 +239,7 @@ function buildResultInfoMap(
   const keyId = findKey('deal') ?? findKey(' id') ?? findKey('id');
   const keyChannel = findKey('canal entrada') ?? findKey('canal');
   const keyStatus = findKey('status');
+  const keyOwner = findKey('responsavel') ?? findKey('owner') ?? findKey('proprietario') ?? findKey('dono');
 
   const resultInfoById = new Map<string, Partial<PipedriveDealRecord>>();
 
@@ -247,6 +250,7 @@ function buildResultInfoMap(
     resultInfoById.set(dealId, {
       canal: getPrimaryChannel(keyChannel ? row[keyChannel] : null),
       status: keyStatus && row[keyStatus] != null ? String(row[keyStatus]).toLowerCase().trim() : '',
+      ownerName: keyOwner && row[keyOwner] ? String(row[keyOwner]).trim() : undefined,
     });
   }
 
@@ -292,6 +296,7 @@ function parseConsolidatedMondeRows(
       status: resultInfo?.status || pipeDeal?.status || '',
       receita: revenue,
       hasMondeBilling: true,
+      ownerName: resultInfo?.ownerName || pipeDeal?.ownerName,
     });
 
     mondeDeals.set(compositeKey, mergeDealRecords(mondeDeals.get(compositeKey), deal));
@@ -312,6 +317,7 @@ function parseRawDealsFormat(
   const keyCanal = findKey('canal');
   const keyStatus = findKey('status');
   const keyFat = findKey('faturamento');
+  const keyOwner = findKey('responsavel') ?? findKey('owner') ?? findKey('proprietario') ?? findKey('dono');
 
   const mondeDeals = new Map<string, PipedriveDealRecord>();
   let minDate: string | null = null;
@@ -343,6 +349,7 @@ function parseRawDealsFormat(
       status: keyStatus && row[keyStatus] != null ? String(row[keyStatus]).toLowerCase().trim() : '',
       receita: faturamento,
       hasMondeBilling: true,
+      ownerName: keyOwner && row[keyOwner] ? String(row[keyOwner]).trim() : undefined,
     });
 
     mondeDeals.set(dealId, mergeDealRecords(mondeDeals.get(dealId), deal));
@@ -362,6 +369,7 @@ function parsePipelineSheet(
   const keyId = findKey(' id') ?? findKey('id ') ?? keys.find((key) => norm(key) === 'id') ?? findKey('id');
   const keyCanal = findKey('canal');
   const keyStatus = findKey('status');
+  const keyOwner = findKey('responsavel') ?? findKey('owner') ?? findKey('proprietario') ?? findKey('dono');
 
   const deals = new Map<string, PipedriveDealRecord>();
   let minDate: string | null = null;
@@ -390,6 +398,7 @@ function parsePipelineSheet(
       status: keyStatus && row[keyStatus] != null ? String(row[keyStatus]).toLowerCase().trim() : '',
       receita: 0,
       hasMondeBilling: false,
+      ownerName: keyOwner && row[keyOwner] ? String(row[keyOwner]).trim() : undefined,
     });
 
     deals.set(dealId, mergeDealRecords(deals.get(dealId), deal));
@@ -415,6 +424,7 @@ function mergeRevenueAndPipeline(
       createdDate: deal.createdDate || pipelineDeal.createdDate,
       canal: deal.canal !== 'Nao Informado' ? deal.canal : pipelineDeal.canal,
       status: deal.status || pipelineDeal.status,
+      ownerName: deal.ownerName || pipelineDeal.ownerName,
     };
   });
 
@@ -498,6 +508,7 @@ function findMondeSimples(
     const keyId = findKey('deal') ?? findKey(' id') ?? keys.find((k) => norm(k) === 'id') ?? findKey('id');
     const keyFat = findKey('faturamento total') ?? findKey('faturamento');
     const keyDate = findKey('data venda') ?? findKey('data') ?? findKey('criado');
+    const keyOwner = findKey('responsavel') ?? findKey('owner') ?? findKey('proprietario') ?? findKey('dono');
 
     // Chave composta: Deal ID + Data — para suportar o mesmo deal com pagamentos em meses diferentes
     const mondeDeals = new Map<string, PipedriveDealRecord>();
@@ -528,6 +539,7 @@ function findMondeSimples(
         status: 'won',
         receita: revenue,
         hasMondeBilling: true,
+        ownerName: keyOwner && row[keyOwner] ? String(row[keyOwner]).trim() : undefined,
       });
 
       mondeDeals.set(compositeKey, mergeDealRecords(mondeDeals.get(compositeKey), deal));
@@ -636,6 +648,8 @@ function createDealRecord(input: PipedriveDealRecord): PipedriveDealRecord {
     status: input.status || '',
     receita: round2(input.receita || 0),
     hasMondeBilling: input.hasMondeBilling,
+    ownerId: input.ownerId ?? undefined,
+    ownerName: input.ownerName ?? undefined,
   };
 }
 
@@ -654,6 +668,8 @@ function mergeDealRecords(
     status: existing.status || incoming.status,
     receita: round2((existing.receita || 0) + (incoming.receita || 0)),
     hasMondeBilling: existing.hasMondeBilling || incoming.hasMondeBilling,
+    ownerId: existing.ownerId ?? incoming.ownerId,
+    ownerName: existing.ownerName ?? incoming.ownerName,
   };
 }
 

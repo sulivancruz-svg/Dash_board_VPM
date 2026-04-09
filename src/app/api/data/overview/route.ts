@@ -313,6 +313,9 @@ export async function GET(req: NextRequest) {
         receitaBranding,     // Espontaneamente + Site + Email + Pós-viagem (ambíguo)
         receitaDesconhecida, // canal não informado
         vendasMidiaPaga,     // deals atribuídos à mídia paga
+        // ── Raw deal records (para análises específicas como Livia) ──
+        pipelineDeals: pipedriveData?.pipelineDeals || [],
+        mondeDeals: pipedriveData?.mondeDeals || [],
       },
 
       // ── SDR — camada de atendimento e conversão (sem receita) ──
