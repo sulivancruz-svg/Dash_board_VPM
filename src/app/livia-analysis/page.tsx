@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { Loader, AlertCircle } from 'lucide-react';
-import type { PipedriveDealRecord, PipedriveStore } from '@/lib/data-store';
+import type { PipedriveDirectRecentDeal } from '@/lib/pipedrive-direct-store';
 
 interface LiviaStats {
   totalCreated: number;
-  totalSalesInMonde: number;
-  conversionRate: number;
-  totalRevenue: number;
-  deals: PipedriveDealRecord[];
+  totalWon: number;
+  totalOpen: number;
+  totalLost: number;
+  winRate: number;
+  deals: PipedriveDirectRecentDeal[];
 }
 
 export default function LiviaAnalysisPage() {
@@ -20,50 +21,54 @@ export default function LiviaAnalysisPage() {
   useEffect(() => {
     async function analyze() {
       try {
-        // Busca dados do Pipedrive
-        const response = await fetch('/api/data/overview');
-        if (!response.ok) throw new Error('Falha ao carregar dados');
+        // Busca dados do Pipedrive Direto
+        const response = await fetch('/api/pipedrive-direct');
+        if (!response.ok) throw new Error('Falha ao carregar dados do Pipedrive');
 
         const data = await response.json();
-        const pipedriveStore = data.pipedrive;
+        const directData = data.data;
 
-        if (!pipedriveStore) {
-          throw new Error('Dados do Pipedrive não disponíveis');
+        if (!directData) {
+          throw new Error('Dados do Pipedrive não disponíveis. Configure a conexão na aba "Pipedrive Direto"');
         }
 
-        // Filtra deals criados por Livia
-        const liviaDeals = [
-          ...(pipedriveStore.pipelineDeals || []),
-          ...(pipedriveStore.mondeDeals || []),
-        ].filter((deal) => deal.ownerName && deal.ownerName.toLowerCase().includes('livia'));
+        // Filtra deals de Livia
+        const liviaDeals = (directData.allDeals || [])
+          .filter((deal) => deal.ownerName && deal.ownerName.toLowerCase().includes('livia'));
 
-        // Remove duplicatas (alguns deals aparecem em ambas as listas)
-        const uniqueDealsMap = new Map<string, PipedriveDealRecord>();
+        if (liviaDeals.length === 0) {
+          throw new Error('Nenhum deal encontrado para Livia. Verifique se o Pipedrive está sincronizado.');
+        }
+
+        // Calcula métricas
+        let won = 0;
+        let open = 0;
+        let lost = 0;
+
         liviaDeals.forEach((deal) => {
-          if (!uniqueDealsMap.has(deal.id) || deal.hasMondeBilling) {
-            uniqueDealsMap.set(deal.id, deal);
-          }
+          const status = deal.status?.toLowerCase() || 'open';
+          if (status === 'won') won += 1;
+          else if (status === 'lost') lost += 1;
+          else open += 1;
         });
 
-        const uniqueDeals = Array.from(uniqueDealsMap.values());
-        const dealsBecameSales = uniqueDeals.filter((deal) => deal.hasMondeBilling);
-        const conversionRate = uniqueDeals.length > 0
-          ? (dealsBecameSales.length / uniqueDeals.length) * 100
-          : 0;
-        const totalRevenue = dealsBecameSales.reduce((sum, deal) => sum + (deal.receita || 0), 0);
+        const winRate = liviaDeals.length > 0 ? (won / liviaDeals.length) * 100 : 0;
 
         setStats({
-          totalCreated: uniqueDeals.length,
-          totalSalesInMonde: dealsBecameSales.length,
-          conversionRate,
-          totalRevenue,
-          deals: uniqueDeals.sort((a, b) => {
-            // Coloca as vendas realizadas primeiro
-            if (a.hasMondeBilling !== b.hasMondeBilling) {
-              return (b.hasMondeBilling ? 1 : 0) - (a.hasMondeBilling ? 1 : 0);
-            }
-            // Depois ordena por data (mais recentes primeiro)
-            return (b.createdDate || '').localeCompare(a.createdDate || '');
+          totalCreated: liviaDeals.length,
+          totalWon: won,
+          totalOpen: open,
+          totalLost: lost,
+          winRate,
+          deals: liviaDeals.sort((a, b) => {
+            // Status vencido primeiro
+            const statusOrder = { won: 0, open: 1, lost: 2 };
+            const aStatus = (a.status?.toLowerCase() || 'open') as keyof typeof statusOrder;
+            const bStatus = (b.status?.toLowerCase() || 'open') as keyof typeof statusOrder;
+            const statusDiff = (statusOrder[aStatus] ?? 1) - (statusOrder[bStatus] ?? 1);
+            if (statusDiff !== 0) return statusDiff;
+            // Depois por data (mais recentes primeiro)
+            return String(b.addTime || '').localeCompare(String(a.addTime || ''));
           }),
         });
       } catch (err) {
@@ -109,33 +114,33 @@ export default function LiviaAnalysisPage() {
             </p>
           </div>
 
-          {/* Vendidos no Monde */}
+          {/* Deals Vencidos */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
             <p className="text-sm text-slate-500 uppercase tracking-wider mb-2">
-              Viraram Venda (Monde)
+              Deals Vencidos
             </p>
             <p className="text-3xl font-bold text-emerald-600">
-              {stats?.totalSalesInMonde || '—'}
+              {stats?.totalWon || '—'}
             </p>
           </div>
 
-          {/* Taxa de Conversão */}
+          {/* Deals em Aberto */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
             <p className="text-sm text-slate-500 uppercase tracking-wider mb-2">
-              Taxa de Conversão
+              Em Aberto
             </p>
             <p className="text-3xl font-bold text-amber-600">
-              {stats?.conversionRate ? `${stats.conversionRate.toFixed(1)}%` : '—'}
+              {stats?.totalOpen || '—'}
             </p>
           </div>
 
-          {/* Receita Total */}
+          {/* Taxa de Vitória */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
             <p className="text-sm text-slate-500 uppercase tracking-wider mb-2">
-              Receita Total
+              Taxa de Vitória
             </p>
             <p className="text-3xl font-bold text-slate-900">
-              {stats?.totalRevenue ? `R$ ${(stats.totalRevenue / 1000).toFixed(0)}k` : '—'}
+              {stats?.winRate ? `${stats.winRate.toFixed(1)}%` : '—'}
             </p>
           </div>
         </div>
@@ -168,6 +173,9 @@ export default function LiviaAnalysisPage() {
                       Deal ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                      Título
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                       Canal
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
@@ -176,11 +184,8 @@ export default function LiviaAnalysisPage() {
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                       Criado em
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">
-                      Receita
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">
-                      Venda Monde
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                      Pipeline
                     </th>
                   </tr>
                 </thead>
@@ -191,7 +196,10 @@ export default function LiviaAnalysisPage() {
                         {deal.id}
                       </td>
                       <td className="px-6 py-3 text-sm text-slate-700">
-                        {deal.canal}
+                        {deal.title || `Deal ${deal.id}`}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-slate-700">
+                        {deal.canal || deal.howArrived || 'Nao Informado'}
                       </td>
                       <td className="px-6 py-3 text-sm text-slate-700">
                         <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
@@ -199,23 +207,14 @@ export default function LiviaAnalysisPage() {
                           deal.status === 'lost' ? 'bg-red-100 text-red-700' :
                           'bg-amber-100 text-amber-700'
                         }`}>
-                          {deal.status.toUpperCase()}
+                          {deal.status?.toUpperCase() || 'UNKNOWN'}
                         </span>
                       </td>
                       <td className="px-6 py-3 text-sm text-slate-600">
-                        {deal.createdDate || '—'}
+                        {deal.addTime ? new Date(deal.addTime).toLocaleDateString('pt-BR') : '—'}
                       </td>
-                      <td className="px-6 py-3 text-sm text-right font-semibold text-slate-900">
-                        R$ {deal.receita.toLocaleString('pt-BR')}
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          deal.hasMondeBilling
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {deal.hasMondeBilling ? '✓ Sim' : '✗ Não'}
-                        </span>
+                      <td className="px-6 py-3 text-sm text-slate-600">
+                        {deal.pipelineName || '—'}
                       </td>
                     </tr>
                   ))}
@@ -234,9 +233,8 @@ export default function LiviaAnalysisPage() {
         {/* Nota de Desenvolvimento */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>📝 Nota:</strong> Esta é uma aba de teste isolada. Os dados estão sendo carregados
-            do endpoint `/api/data/overview`. Quando os dados incluírem `ownerId` para Livia, a tabela
-            será preenchida automaticamente.
+            <strong>ℹ️ Informação:</strong> Os dados são carregados automaticamente do Pipedrive Direto.
+            A tabela mostra todos os deals criados por Livia, com status atual no pipeline.
           </p>
         </div>
       </div>
