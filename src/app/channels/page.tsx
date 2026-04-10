@@ -188,7 +188,7 @@ export default function ChannelsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">Resultados Comerciais</p>
-          <h1 className="text-2xl font-bold text-slate-900">Canais & Receita</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Canais & Faturamento</h1>
           {updatedAt && <p className="mt-0.5 text-xs text-slate-400">Atualizado em {updatedAt}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -234,7 +234,7 @@ export default function ChannelsPage() {
         <>
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             <KpiCard
-              label="Receita Total"
+              label="Faturamento Total"
               value={fmt(data.summary.totalReceita, 'currency')}
               sub={`${data.summary.totalCanais} canais`}
               color="text-emerald-700"
@@ -266,7 +266,7 @@ export default function ChannelsPage() {
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-700">Midia Paga Integrada</h2>
                   <p className="mt-1 text-xs text-slate-400">Periodo analisado: {selectedPeriodLabel}</p>
                 </div>
-                <span className="text-xs text-slate-400">Receita e vendas pagas usam a atribuicao do Pipe Monde</span>
+                <span className="text-xs text-slate-400">Faturamento e vendas pagas usam a atribuicao do Pipe Monde</span>
               </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -333,7 +333,7 @@ export default function ChannelsPage() {
           )}
 
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-700">Top Canais por Receita</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-700">Top Canais por Faturamento</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.channels.slice(0, 6).map((channel, index) => {
                 const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-teal-500', 'bg-rose-500'];
@@ -344,7 +344,7 @@ export default function ChannelsPage() {
                   <div key={channel.canal} className={`${bgColors[index]} rounded-xl border border-slate-200 p-5`}>
                     <div className="mb-3 flex items-start justify-between">
                       <div className={`mt-1.5 h-2 w-2 rounded-full ${colors[index]}`} />
-                      <span className={`text-xs font-bold ${textColors[index]}`}>{channel.receitaPct}% da receita</span>
+                      <span className={`text-xs font-bold ${textColors[index]}`}>{channel.receitaPct}% do faturamento</span>
                     </div>
                     <p className="mb-1.5 text-sm font-semibold leading-tight text-slate-800">{channel.canal}</p>
                     {channel.attribution && channel.attribution !== 'UNKNOWN' && (
@@ -385,8 +385,8 @@ export default function ChannelsPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Oportunidades</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Vendas</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">% Vendas</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Receita</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">% Receita</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Faturamento</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">% Faturamento</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ticket Medio</th>
                   </tr>
                 </thead>

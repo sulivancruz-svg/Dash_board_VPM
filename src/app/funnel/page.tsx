@@ -277,7 +277,7 @@ export default function FunnelPage() {
 
               {/* Receita Ã¢â‚¬â€ Monde */}
               <FunnelStep
-                label="Receita Total"
+                label="Faturamento Total"
                 value={fmt(totalReceita, 'currency')}
                 sub={`ticket: ${fmt(data?.summary?.ticketMedio, 'currency')}`}
                 color="bg-teal-600 text-white"
@@ -323,7 +323,7 @@ export default function FunnelPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-slate-400" />
-                <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Receita por Origem</h2>
+                <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Faturamento por Origem</h2>
                 <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">ROAS usa mídia paga; Custo por Oportunidade usa todas as oportunidades</span>
               </div>
 
@@ -342,7 +342,7 @@ export default function FunnelPage() {
                         )}
                       </div>
                       <p className="text-xl font-bold text-slate-900 mb-0.5">{fmt(group.receita, 'currency')}</p>
-                      <p className="text-xs text-slate-500 mb-2">{fmt(group.receitaPct, 'pct')} da receita total</p>
+                      <p className="text-xs text-slate-500 mb-2">{fmt(group.receitaPct, 'pct')} do faturamento total</p>
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>{fmt(group.vendas)} vendas</span>
                         <span>{group.totalCanais} {group.totalCanais === 1 ? 'canal' : 'canais'}</span>
@@ -386,8 +386,8 @@ export default function FunnelPage() {
                     <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Qualif.</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Vendas</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">% Vendas</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Receita</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">% Receita</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Faturamento</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">% Faturamento</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Ticket</th>
                   </tr>
                 </thead>

@@ -575,12 +575,12 @@ export default function PaidMediaPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
             <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-blue-800 uppercase tracking-wider">Receita por Canal Pago — Monde</h2>
+                <h2 className="text-sm font-semibold text-blue-800 uppercase tracking-wider">Faturamento por Canal Pago — Monde</h2>
                 <p className="text-xs text-blue-500 mt-0.5">Google · Redes Sociais · Site — dados históricos da base Monde</p>
               </div>
               <div className="flex gap-6">
                 <div className="text-right">
-                  <p className="text-xs font-medium text-blue-600">Receita (Canais Pagos)</p>
+                  <p className="text-xs font-medium text-blue-600">Faturamento (Canais Pagos)</p>
                   <p className="text-xl font-bold text-blue-900">{fmt(totalReceita, 'currency')}</p>
                 </div>
                 <div className="text-right">
@@ -608,7 +608,7 @@ export default function PaidMediaPage() {
                       <p className="text-sm font-bold text-slate-700">{fmt(c.ticket, 'currency')}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">% Receita</p>
+                      <p className="text-xs text-slate-400">% Faturamento</p>
                       <p className="text-sm font-bold text-blue-700">{c.receitaPct}%</p>
                     </div>
                   </div>

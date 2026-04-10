@@ -197,7 +197,7 @@ export default function OverviewPage() {
       {/* ── Cabeçalho ── */}
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Marketing e Receita</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Marketing e Faturamento</p>
           <h1 className="text-2xl font-bold text-slate-900">Visao Executiva</h1>
           {data?.referencePeriod && (
             <p className="text-sm text-slate-500 mt-0.5">
@@ -274,7 +274,7 @@ export default function OverviewPage() {
 
               {/* ROAS destaque */}
               <div className="mt-3 mb-5">
-                <p className="text-xs text-slate-400 mb-0.5">ROAS (receita mídia paga / invest.)</p>
+                <p className="text-xs text-slate-400 mb-0.5">ROAS (faturamento mídia paga / invest.)</p>
                 <p className={`text-4xl font-bold ${data?.kpis.roi && data.kpis.roi >= 3 ? 'text-emerald-600' : data?.kpis.roi ? 'text-amber-500' : 'text-slate-300'}`}>
                   {data?.kpis.roi != null ? fmt(data.kpis.roi, 'multiplier') : '—'}
                 </p>
@@ -314,7 +314,7 @@ export default function OverviewPage() {
                 )}
                 {/* Receita atribuída */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <span className="text-xs text-slate-500">Receita atribuída a mídia paga</span>
+                  <span className="text-xs text-slate-500">Faturamento atribuído a mídia paga</span>
                   <span className="text-sm font-bold text-emerald-600">
                     {data?.kpis.receitaMidiaPaga > 0 ? fmt(data.kpis.receitaMidiaPaga, 'currency') : '—'}
                   </span>
@@ -331,7 +331,7 @@ export default function OverviewPage() {
 
               {/* Receita destaque */}
               <div className="mt-3 mb-5">
-                <p className="text-xs text-slate-400 mb-0.5">Receita total (Monde)</p>
+                <p className="text-xs text-slate-400 mb-0.5">Faturamento total (Monde)</p>
                 <p className="text-4xl font-bold text-emerald-600">
                   {data?.kpis.receita > 0 ? fmt(data.kpis.receita, 'currency') : '—'}
                 </p>
@@ -380,7 +380,7 @@ export default function OverviewPage() {
             {/* Card 3 — Origem da Receita */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <div className="flex items-center justify-between mb-1">
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Origem da Receita</h2>
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Origem do Faturamento</h2>
                 <span className="text-xs text-slate-400">Monde</span>
               </div>
 
@@ -564,7 +564,7 @@ export default function OverviewPage() {
           {data && data.pipedrive.channels.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
               <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">
-                Receita por Canal — Pipe Monde
+                Faturamento por Canal — Pipe Monde
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {data.pipedrive.channels.map((channel, index) => {
@@ -610,7 +610,7 @@ export default function OverviewPage() {
                   <TrendingUp className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">Canais e Receita</p>
+                  <p className="text-sm font-semibold text-slate-800">Canais e Faturamento</p>
                   <p className="text-xs text-slate-400">Comparacao por canal (Monde)</p>
                 </div>
               </div>

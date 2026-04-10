@@ -87,7 +87,7 @@ export default function LoginPage() {
             <Lock className="w-6 h-6 text-blue-400" />
           </div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-slate-400 mt-1">Marketing e Receita</p>
+          <p className="text-sm text-slate-400 mt-1">Marketing e Faturamento</p>
         </div>
 
         <Suspense fallback={<div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 h-40 animate-pulse" />}>

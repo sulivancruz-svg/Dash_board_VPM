@@ -42,7 +42,7 @@ export function FunnelTable({ data }: FunnelTableProps) {
               <th className="text-right px-4 py-3.5 font-semibold text-slate-500">% Qualif.</th>
               <th className="text-right px-4 py-3.5 font-semibold text-slate-500">Oprtun.</th>
               <th className="text-right px-4 py-3.5 font-semibold text-slate-500">Vendas</th>
-              <th className="text-right px-5 py-3.5 font-semibold text-slate-700">Receita</th>
+              <th className="text-right px-5 py-3.5 font-semibold text-slate-700">Faturamento</th>
               <th className="text-right px-5 py-3.5 font-semibold text-slate-700">Ticket Médio</th>
             </tr>
           </thead>

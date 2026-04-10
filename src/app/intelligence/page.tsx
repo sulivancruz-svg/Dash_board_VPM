@@ -68,14 +68,14 @@ function ChannelRankingSection({ channels }: { channels: ChannelRanking[] }) {
             Qual canal traz clientes de maior valor?
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Ticket médio e receita total por canal de origem
+            Ticket médio e faturamento total por canal de origem
           </p>
         </div>
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
           {(['ticket','receita'] as const).map(s => (
             <button key={s} onClick={() => setSort(s)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${sort === s ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
-              {s === 'ticket' ? 'Ticket' : 'Receita'}
+              {s === 'ticket' ? 'Ticket' : 'Faturamento'}
             </button>
           ))}
         </div>
@@ -88,13 +88,13 @@ function ChannelRankingSection({ channels }: { channels: ChannelRanking[] }) {
               <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-6">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Canal</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider min-w-[180px]">
-                {sort === 'ticket' ? 'Ticket Médio' : 'Receita Total'}
+                {sort === 'ticket' ? 'Ticket Médio' : 'Faturamento Total'}
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                {sort === 'ticket' ? 'Receita' : 'Ticket'}
+                {sort === 'ticket' ? 'Faturamento' : 'Ticket'}
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Deals</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">% Receita</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">% Faturamento</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -188,7 +188,7 @@ function TemporalSection({ channels, allMonthKeys }: { channels: TemporalChannel
           {(['receita','deals','ticket'] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${view === v ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
-              {v === 'receita' ? 'Receita' : v === 'deals' ? 'Deals' : 'Ticket'}
+              {v === 'receita' ? 'Faturamento' : v === 'deals' ? 'Deals' : 'Ticket'}
             </button>
           ))}
         </div>
@@ -305,7 +305,7 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Meses analisados</p>
           <p className="text-2xl font-bold text-slate-700">{points.length}</p>
-          <p className="text-xs text-slate-500 mt-1">pares investimento × receita disponíveis</p>
+          <p className="text-xs text-slate-500 mt-1">pares investimento × faturamento disponíveis</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Confiança</p>
@@ -326,7 +326,7 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
             <tr>
               <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Cenário</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Investimento</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Receita esperada</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Faturamento esperado</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">ROI projetado</th>
             </tr>
           </thead>
@@ -394,7 +394,7 @@ function EfficiencySection({ scores }: { scores: EfficiencyScore[] }) {
       <div className="mb-4">
         <h2 className="text-base font-bold text-slate-800">Qual canal pago é mais eficiente?</h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          Receita gerada por real investido — ROI = receita atribuída ÷ investimento real
+          Faturamento gerado por real investido — ROI = faturamento atribuído ÷ investimento real
         </p>
       </div>
 
@@ -434,7 +434,7 @@ function EfficiencySection({ scores }: { scores: EfficiencyScore[] }) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Receita</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Faturamento</p>
                   <p className="text-sm font-bold text-slate-700">{BRL(s.receita)}</p>
                 </div>
                 <div>

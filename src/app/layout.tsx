@@ -4,7 +4,7 @@ import { SidebarBrand } from '@/components/sidebar-brand';
 import { SessionProviderWrapper } from '@/components/session-provider-wrapper';
 
 export const metadata: Metadata = {
-  title: 'Dashboard de Marketing & Receita',
+  title: 'Dashboard de Marketing & Faturamento',
   description: 'Analise estrategica de campanha, SDR e pipeline comercial',
 };
 
@@ -13,7 +13,7 @@ const navItems = [
   { href: '/paid-media', label: 'Midia Paga', icon: 'MP' },
   { href: '/pipedrive-direct', label: 'Pipedrive Direto', icon: 'PD' },
   { href: '/funnel', label: 'Funil Comercial', icon: 'FC' },
-  { href: '/channels', label: 'Canais e Receita', icon: 'CR' },
+  { href: '/channels', label: 'Canais e Faturamento', icon: 'CR' },
   { href: '/intelligence', label: 'Inteligencia', icon: '✦' },
   { href: '/livia-analysis', label: 'Análise Livia (TESTE)', icon: 'LA' },
   { href: '/historical-imports', label: 'Uploads Historicos', icon: 'UH' },
