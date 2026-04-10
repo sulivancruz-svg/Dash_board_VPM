@@ -85,6 +85,7 @@ interface ChannelsData {
   summary: {
     totalReceita: number;
     totalVendas: number;
+    totalCohortConverted: number;
     totalLeads: number;
     totalLost: number;
     totalQualified: number;
@@ -157,17 +158,18 @@ export default function FunnelPage() {
   }, [activePeriod, dateRange.end, dateRange.start]);
 
 
-  const totalLeads         = data?.summary?.totalLeads || 0;
-  const totalLost          = data?.summary?.totalLost || 0;
-  const totalQualificados  = data?.summary?.totalQualified || 0;
-  const totalVendas        = data?.summary?.totalVendas || 0;
-  const totalReceita       = data?.summary?.totalReceita || 0;
-  const receitaMidiaPaga   = data?.summary?.receitaMidiaPaga || 0;
-  const vendasMidiaPaga    = data?.summary?.vendasMidiaPaga || 0;
+  const totalLeads            = data?.summary?.totalLeads || 0;
+  const totalLost             = data?.summary?.totalLost || 0;
+  const totalQualificados     = data?.summary?.totalQualified || 0;
+  const totalVendas           = data?.summary?.totalVendas || 0;
+  const totalCohortConverted  = data?.summary?.totalCohortConverted || 0;
+  const totalReceita          = data?.summary?.totalReceita || 0;
+  const receitaMidiaPaga      = data?.summary?.receitaMidiaPaga || 0;
+  const vendasMidiaPaga       = data?.summary?.vendasMidiaPaga || 0;
 
   const convLQ    = totalLeads        > 0 && totalQualificados > 0 ? (totalQualificados / totalLeads) * 100 : null;
   const convQV    = totalQualificados > 0 && totalVendas       > 0 ? (totalVendas / totalQualificados) * 100 : null;
-  const convGeral = totalLeads        > 0 && totalVendas       > 0 ? (totalVendas / totalLeads) * 100 : null;
+  const convGeral = totalLeads        > 0 && totalCohortConverted > 0 ? (totalCohortConverted / totalLeads) * 100 : null;
 
   const byAttribution = data?.byAttribution || [];
   const months = data?.months || [];
