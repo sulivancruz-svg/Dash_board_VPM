@@ -68,6 +68,7 @@ export interface PipedriveMetrics {
   totalLost: number;
   totalWon: number;
   withMondeBilling: number;
+  totalCohortConverted: number; // leads do período que viraram venda no Monde (qualquer data)
   avgDaysToWin: number | null;
   period: string | null;
   channels: ChannelSales[];
@@ -97,6 +98,7 @@ export function getPipedriveMetricsForRange(
       totalLost: data.totalLost || 0,
       totalWon: data.totalWon || 0,
       withMondeBilling: data.withMondeBilling || data.totalDeals || 0,
+      totalCohortConverted: 0,
       avgDaysToWin: null,
       period: data.period || null,
       channels: data.channels || [],
@@ -241,6 +243,11 @@ export function getPipedriveMetricsForRange(
     ? Math.round(winDaysArr.reduce((sum, v) => sum + v, 0) / winDaysArr.length)
     : null;
 
+  // Cohort: dos leads criados no período, quantos aparecem no Monde (qualquer data)
+  // Usa todos os mondeDeals (sem filtro de período) para não perder vendas de meses posteriores
+  const allMondeIds = new Set(mondeDeals.map((d) => d.id));
+  const totalCohortConverted = filteredPipelineDeals.filter((d) => allMondeIds.has(d.id)).length;
+
   return {
     totalDeals,
     totalRevenue: round2(totalRevenue),
@@ -250,6 +257,7 @@ export function getPipedriveMetricsForRange(
     totalLost,
     totalWon,
     withMondeBilling: totalDeals,
+    totalCohortConverted,
     avgDaysToWin,
     period: buildPeriodLabel(minDate, maxDate) || data.period || null,
     channels,

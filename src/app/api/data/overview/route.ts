@@ -261,11 +261,13 @@ export async function GET(req: NextRequest) {
       ? Math.round(totalInvestimento / totalLeadsForCpl)
       : null;
 
-    // Taxa de conversão: leads → vendas (Funil Comercial: totalVendas/totalLeads)
-    // Usa totalLeads (todos os canais), não apenas leads de mídia paga
+    // Taxa de conversão cohort: dos leads criados no período, quantos viraram venda no Monde
+    // Não usa status "won" do Pipe (que só é marcado quando cliente volta de viagem)
+    // Cruza pelo ID do deal: lead criado no período → tem registro no Monde (qualquer data)
     const allLeads = pipedriveMetrics?.totalLeads || sdrData?.totalLeads || 0;
-    const conversionRate = allLeads > 0 && totalVendas > 0
-      ? Math.round((totalVendas / allLeads) * 1000) / 10
+    const cohortConverted = pipedriveMetrics?.totalCohortConverted ?? 0;
+    const conversionRate = allLeads > 0 && cohortConverted > 0
+      ? Math.round((cohortConverted / allLeads) * 1000) / 10
       : null;
 
     return NextResponse.json({
