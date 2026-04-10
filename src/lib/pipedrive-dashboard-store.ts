@@ -27,7 +27,14 @@ export function mapPipedriveDirectDealsToPipelineDeals(
   }
 
   return directData.allDeals
-    .filter((deal) => !/pré\s*vendas.*livia/i.test(deal.pipelineName || ''))
+    .filter((deal) => {
+      const pipeline = deal.pipelineName || '';
+      return (
+        !/pré\s*vendas.*livia/i.test(pipeline) &&
+        !/prospec[çc][aã]o.*silvia/i.test(pipeline) &&
+        !/corporativo/i.test(pipeline)
+      );
+    })
     .map((deal) => ({
       id: String(deal.id),
       createdDate: getDateOnly(deal.addTime),
