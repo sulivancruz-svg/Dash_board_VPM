@@ -55,7 +55,7 @@ export default function LiviaAnalysisPage() {
 
         // Filtra deals de Livia
         const liviaDeals = (directData.allDeals || [])
-          .filter((deal) => deal.ownerName && deal.ownerName.toLowerCase().includes('livia'));
+          .filter((deal: PipedriveDirectRecentDeal) => deal.ownerName && deal.ownerName.toLowerCase().includes('livia'));
 
         if (liviaDeals.length === 0) {
           throw new Error('Nenhum deal encontrado para Livia. Verifique se o Pipedrive está sincronizado.');
@@ -66,7 +66,7 @@ export default function LiviaAnalysisPage() {
         let open = 0;
         let lost = 0;
 
-        liviaDeals.forEach((deal) => {
+        liviaDeals.forEach((deal: PipedriveDirectRecentDeal) => {
           const status = deal.status?.toLowerCase() || 'open';
           if (status === 'won') won += 1;
           else if (status === 'lost') lost += 1;
@@ -81,7 +81,7 @@ export default function LiviaAnalysisPage() {
           totalOpen: open,
           totalLost: lost,
           winRate,
-          deals: liviaDeals.sort((a, b) => {
+          deals: liviaDeals.sort((a: PipedriveDirectRecentDeal, b: PipedriveDirectRecentDeal) => {
             // Status vencido primeiro
             const statusOrder = { won: 0, open: 1, lost: 2 };
             const aStatus = (a.status?.toLowerCase() || 'open') as keyof typeof statusOrder;
