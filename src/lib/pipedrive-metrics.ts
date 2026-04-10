@@ -34,6 +34,11 @@ function normalizeChannelName(rawCanal: string): string {
     return 'Indicação - Indicado por um Cliente VPM';
   }
 
+  // Sem origem definida → Não informado
+  if (/criado\s+manualmente/i.test(clean)) {
+    return 'Não informado';
+  }
+
   return clean;
 }
 
