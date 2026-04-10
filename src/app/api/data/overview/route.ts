@@ -241,14 +241,14 @@ export async function GET(req: NextRequest) {
     // ────────────────────────────────────────────────
     // KPIs calculados
     // ────────────────────────────────────────────────
-    // ROI (ROAS): receita mídia paga / investimento do período anterior (com lag de 14 dias)
-    // Lógica: cliques em período anterior → conversões em período atual
+    // ROI (ROAS): receita mídia paga / investimento do período atual
+    // Lógica: investimento e receita do mesmo período
     // Lógica BI: incluir receita de Indicação/Networking inflacionaria artificialmente o ROAS
     const googleSpendPrevious = googleAdsPrevious?.totalSpend || 0;
     const totalInvestimentoPrevious = metaInvestimentoPrevious + googleSpendPrevious;
     const roi =
-      totalInvestimentoPrevious > 0 && receitaMidiaPaga > 0
-        ? Math.round((receitaMidiaPaga / totalInvestimentoPrevious) * 100) / 100
+      totalInvestimento > 0 && receitaMidiaPaga > 0
+        ? Math.round((receitaMidiaPaga / totalInvestimento) * 100) / 100
         : null;
 
     // Custo por Oportunidade (CPL) = investimento / leads de mídia paga (Google + Redes Sociais)
