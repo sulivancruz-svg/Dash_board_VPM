@@ -26,14 +26,16 @@ export function mapPipedriveDirectDealsToPipelineDeals(
     return [];
   }
 
-  return directData.allDeals.map((deal) => ({
-    id: String(deal.id),
-    createdDate: getDateOnly(deal.addTime),
-    canal: deal.canal || deal.howArrived || 'Nao Informado',
-    status: String(deal.status || '').toLowerCase(),
-    receita: 0,
-    hasMondeBilling: false,
-  }));
+  return directData.allDeals
+    .filter((deal) => !/pré\s*vendas.*livia/i.test(deal.pipelineName || ''))
+    .map((deal) => ({
+      id: String(deal.id),
+      createdDate: getDateOnly(deal.addTime),
+      canal: deal.canal || deal.howArrived || 'Nao Informado',
+      status: String(deal.status || '').toLowerCase(),
+      receita: 0,
+      hasMondeBilling: false,
+    }));
 }
 
 export function buildPipedriveDashboardStore(
