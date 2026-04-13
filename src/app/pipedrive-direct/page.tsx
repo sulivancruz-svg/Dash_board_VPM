@@ -767,35 +767,35 @@ export default function PipedriveDirectPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-700">Deals Recentes</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px]">
+                <table className="w-full min-w-[1100px]">
                   <thead className="border-b border-slate-100 bg-slate-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Deal</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Canal</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Responsavel</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Funil</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Etapa</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Criado em</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ganho em</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Motivo perda</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Deal</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Canal</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Responsavel</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Funil</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Etapa</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">Criado em</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">Ganho em</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Motivo perda</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {data.data.recentDeals.map((deal) => (
                       <tr key={deal.id}>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           <p className="text-sm font-medium text-slate-800">{deal.title}</p>
                           <p className="text-xs text-slate-400">ID {deal.id}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.canal || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.ownerName || 'Sem responsavel'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.pipelineName || 'Sem funil'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.stageName || 'Sem etapa'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.status}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{formatDate(deal.addTime)}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{formatDate(deal.wonTime)}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.lostReason || '-'}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{deal.canal || '-'}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{deal.ownerName || 'Sem responsavel'}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{deal.pipelineName || 'Sem funil'}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{deal.stageName || 'Sem etapa'}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{deal.status}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(deal.addTime)}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(deal.wonTime)}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{deal.lostReason || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
