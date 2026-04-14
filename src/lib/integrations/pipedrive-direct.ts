@@ -88,6 +88,7 @@ export interface PipedriveDirectPeriodSummary {
   monthly: Array<{ monthKey: string; label: string; deals: number; wonDeals: number; lostDeals: number; openDeals: number }>;
   weekly: Array<{ weekKey: string; label: string; deals: number }>;
   recentDeals: PipedriveDirectRecentDeal[];
+  allDeals: PipedriveDirectRecentDeal[];
 }
 
 function normalizeText(value: string): string {
@@ -630,5 +631,6 @@ export function buildPipedriveDirectPeriodSummary(
       .slice()
       .sort((a, b) => String(b.addTime || '').localeCompare(String(a.addTime || '')))
       .slice(0, 20),
+    allDeals: source.allDeals,
   };
 }
