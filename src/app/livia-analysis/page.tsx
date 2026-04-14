@@ -113,7 +113,18 @@ export default function LiviaAnalysisPage() {
   useEffect(() => {
     if (!allDeals.length) return;
 
-    const filtered = allDeals.filter(d => inRange(d.addTime, dateRange.start, dateRange.end));
+    const filtered = allDeals.filter(d => {
+      const status = (d.status || '').toLowerCase();
+      // Won: filtra por wonTime (quando o deal foi ganho, não quando foi criado)
+      if (status === 'won') {
+        const wt = getDateOnly(d.wonTime);
+        return wt ? wt >= dateRange.start && wt <= dateRange.end : inRange(d.addTime, dateRange.start, dateRange.end);
+      }
+      // Open: mostra todos os deals abertos (estão ativos agora no pipeline)
+      if (status === 'open') return true;
+      // Lost: filtra por data de criação (não temos lostTime)
+      return inRange(d.addTime, dateRange.start, dateRange.end);
+    });
 
     let won = 0, open = 0, lost = 0;
     const canalMap = new Map<string, CanalRow>();
