@@ -113,11 +113,8 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
 export async function blobSetJson(key: string, value: unknown, access: 'public' | 'private' = 'public'): Promise<void> {
   if (IS_BLOB) {
     try {
-      const { put, list, del } = await import('@vercel/blob');
-      const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
-      if (blobs.length > 0) {
-        await del(blobs.map((b) => b.url));
-      }
+      const { put } = await import('@vercel/blob');
+      // Use allowOverwrite:true directly — avoids list()+del() which can fail on legacy private blobs
       await put(`${key}.json`, JSON.stringify(value), {
         access,
         addRandomSuffix: false,
