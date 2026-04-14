@@ -53,9 +53,13 @@ export default function LiviaAnalysisPage() {
           throw new Error('Nenhum dado sincronizado. Verifique a configuração do Pipedrive Direto.');
         }
 
-        // Filtra deals de Livia
+        // Filtra deals de Livia — por nome do funil OU do responsável
         const liviaDeals = (directData.allDeals || [])
-          .filter((deal: PipedriveDirectRecentDeal) => deal.ownerName && deal.ownerName.toLowerCase().includes('livia'));
+          .filter((deal: PipedriveDirectRecentDeal) => {
+            const owner = (deal.ownerName || '').toLowerCase();
+            const pipeline = (deal.pipelineName || '').toLowerCase();
+            return owner.includes('livia') || pipeline.includes('livia');
+          });
 
         if (liviaDeals.length === 0) {
           throw new Error('Nenhum deal encontrado para Livia. Verifique se o Pipedrive está sincronizado.');
