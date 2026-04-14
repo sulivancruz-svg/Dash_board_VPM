@@ -284,34 +284,11 @@ export default function FunnelPage() {
               />
             </div>
 
-            {/* Taxas de conversÃƒÂ£o + Perdidos */}
-            {(convGeral || convLQ || convQV || totalLost > 0) && (
+            {totalLost > 0 && (
               <div className="mt-5 pt-5 border-t border-slate-100">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {convGeral !== null && (
-                    <div className="text-center">
-                      <p className="text-xs text-slate-400 mb-1">Oportunidade {'->'} Venda</p>
-                      <ConvBadge value={convGeral} thresholds={[10, 30]} />
-                    </div>
-                  )}
-                  {totalLost > 0 && (
-                    <div className="text-center">
-                      <p className="text-xs text-slate-400 mb-1">Perdidos</p>
-                      <span className="text-sm font-semibold tabular-nums text-red-500">{fmt(totalLost)}</span>
-                    </div>
-                  )}
-                  {convLQ !== null && (
-                    <div className="text-center">
-                      <p className="text-xs text-slate-400 mb-1">Oportunidade {'->'} Qualif.</p>
-                      <ConvBadge value={convLQ} thresholds={[10, 20]} />
-                    </div>
-                  )}
-                  {convQV !== null && (
-                    <div className="text-center">
-                      <p className="text-xs text-slate-400 mb-1">Qualif. Ã¢â€ â€™ Venda</p>
-                      <ConvBadge value={convQV} thresholds={[10, 20]} />
-                    </div>
-                  )}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">Perdidos no período</p>
+                  <span className="text-sm font-semibold text-red-500">{fmt(totalLost)}</span>
                 </div>
               </div>
             )}
