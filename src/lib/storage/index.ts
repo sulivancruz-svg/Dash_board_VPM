@@ -71,14 +71,31 @@ export async function kvDel(key: string): Promise<void> {
 export async function blobGetJson<T>(key: string): Promise<T | null> {
   if (IS_BLOB) {
     try {
-      const { list } = await import('@vercel/blob');
+      const { list, get } = await import('@vercel/blob');
       const result = await list({ prefix: `${key}.json`, limit: 1 });
       const blobs = result?.blobs ?? [];
       if (blobs.length > 0) {
-        const blobEntry = blobs[0] as { downloadUrl?: string; url: string };
-        let res = await fetch(blobEntry.url, { cache: 'no-store' });
+        const blobUrl = blobs[0].url;
+        // Try SDK get() first — handles both public and private blobs server-side
+        try {
+          const blob = await get(blobUrl);
+          if (blob) {
+            const reader = (blob as unknown as { stream: ReadableStream }).stream?.getReader?.();
+            if (reader) {
+              const chunks: Uint8Array[] = [];
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (value) chunks.push(value as Uint8Array);
+              }
+              return JSON.parse(Buffer.concat(chunks).toString('utf-8')) as T;
+            }
+          }
+        } catch { /* fallback to fetch */ }
+        // Fallback: direct fetch (public blobs)
+        let res = await fetch(blobUrl, { cache: 'no-store' });
         if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
-          res = await fetch(blobEntry.downloadUrl || blobEntry.url, {
+          res = await fetch(blobUrl, {
             cache: 'no-store',
             headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
           });
@@ -113,8 +130,12 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
 export async function blobSetJson(key: string, value: unknown, access: 'public' | 'private' = 'public'): Promise<void> {
   if (IS_BLOB) {
     try {
-      const { put } = await import('@vercel/blob');
-      // Use allowOverwrite:true directly — avoids list()+del() which can fail on legacy private blobs
+      const { put, list, del } = await import('@vercel/blob');
+      // Delete old blob first — allowOverwrite requires same access type, so delete to allow type change
+      try {
+        const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
+        if (blobs.length > 0) await del(blobs.map((b) => b.url));
+      } catch { /* ignore delete errors */ }
       await put(`${key}.json`, JSON.stringify(value), {
         access,
         addRandomSuffix: false,
