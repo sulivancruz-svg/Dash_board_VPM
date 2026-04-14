@@ -76,24 +76,9 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
       const blobs = result?.blobs ?? [];
       if (blobs.length > 0) {
         const blobUrl = blobs[0].url;
-        // Try SDK get() first — handles both public and private blobs server-side
-        try {
-          const blob = await get(blobUrl);
-          if (blob) {
-            const reader = (blob as unknown as { stream: ReadableStream }).stream?.getReader?.();
-            if (reader) {
-              const chunks: Uint8Array[] = [];
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                if (value) chunks.push(value as Uint8Array);
-              }
-              return JSON.parse(Buffer.concat(chunks).toString('utf-8')) as T;
-            }
-          }
-        } catch { /* fallback to fetch */ }
-        // Fallback: direct fetch (public blobs)
+        // Public blob: fetch directly
         let res = await fetch(blobUrl, { cache: 'no-store' });
+        // Private/legacy blob: try with Bearer token
         if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
           res = await fetch(blobUrl, {
             cache: 'no-store',
