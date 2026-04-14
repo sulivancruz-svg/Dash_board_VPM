@@ -74,25 +74,28 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
       const { list } = await import('@vercel/blob');
       const result = await list({ prefix: `${key}.json`, limit: 1 });
       const blobs = result?.blobs ?? [];
-      if (blobs.length === 0) return null;
-      // Try public URL first (no auth), fall back to downloadUrl for private blobs
-      const blobEntry = blobs[0] as { downloadUrl?: string; url: string };
-      const fetchUrl = blobEntry.url;
-      const fetchOptions: RequestInit = { cache: 'no-store' };
-      let res = await fetch(fetchUrl, fetchOptions);
-      // If public fetch fails, try with Bearer token (private blob)
-      if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
-        const authUrl = blobEntry.downloadUrl || fetchUrl;
-        res = await fetch(authUrl, {
-          cache: 'no-store',
-          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-        });
+      if (blobs.length > 0) {
+        const blobEntry = blobs[0] as { downloadUrl?: string; url: string };
+        let res = await fetch(blobEntry.url, { cache: 'no-store' });
+        if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
+          res = await fetch(blobEntry.downloadUrl || blobEntry.url, {
+            cache: 'no-store',
+            headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+          });
+        }
+        if (res.ok) return (await res.json()) as T;
       }
-      if (!res.ok) return null;
-      return (await res.json()) as T;
     } catch (e) {
-      console.error(`[storage] blobGetJson(${key}) error:`, e);
-      return null;
+      console.error(`[storage] blobGetJson(${key}) blob failed, falling back to KV:`, e);
+    }
+  }
+  // KV fallback
+  if (IS_KV) {
+    try {
+      const { kv } = await import('@vercel/kv');
+      return await kv.get<T>(key);
+    } catch (e) {
+      console.error(`[storage] blobGetJson(${key}) KV error:`, e);
     }
   }
   const file = localBlobPath(key);
@@ -106,35 +109,54 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
   return null;
 }
 
-/** Write a large JSON blob (prod: Vercel Blob, dev: local file). */
+/** Write a large JSON blob (prod: Vercel Blob with KV fallback, dev: local file). */
 export async function blobSetJson(key: string, value: unknown, access: 'public' | 'private' = 'public'): Promise<void> {
   if (IS_BLOB) {
-    const { put, list, del } = await import('@vercel/blob');
-    // Remove old blob with this key before uploading new one
-    const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
-    if (blobs.length > 0) {
-      await del(blobs.map((b) => b.url));
+    try {
+      const { put, list, del } = await import('@vercel/blob');
+      const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
+      if (blobs.length > 0) {
+        await del(blobs.map((b) => b.url));
+      }
+      await put(`${key}.json`, JSON.stringify(value), {
+        access,
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: 'application/json',
+      } as Parameters<typeof put>[2]);
+      return;
+    } catch (e) {
+      console.error(`[storage] blobSetJson(${key}) blob failed, falling back to KV:`, e);
     }
-    await put(`${key}.json`, JSON.stringify(value), {
-      access,
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: 'application/json',
-    } as Parameters<typeof put>[2]);
+  }
+  // KV fallback (production without Blob or when Blob fails)
+  if (IS_KV) {
+    const { kv } = await import('@vercel/kv');
+    await kv.set(key, value);
     return;
   }
   const file = localBlobPath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
 
-/** Delete a blob (prod: Vercel Blob, dev: local file). */
+/** Delete a blob (prod: Vercel Blob with KV fallback, dev: local file). */
 export async function blobDel(key: string): Promise<void> {
   if (IS_BLOB) {
-    const { list, del } = await import('@vercel/blob');
-    const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
-    if (blobs.length > 0) {
-      await del(blobs.map((b) => b.url));
+    try {
+      const { list, del } = await import('@vercel/blob');
+      const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
+      if (blobs.length > 0) {
+        await del(blobs.map((b) => b.url));
+      }
+    } catch (e) {
+      console.error(`[storage] blobDel(${key}) blob failed:`, e);
     }
+  }
+  if (IS_KV) {
+    try {
+      const { kv } = await import('@vercel/kv');
+      await kv.del(key);
+    } catch { /* ignore */ }
     return;
   }
   const file = localBlobPath(key);
