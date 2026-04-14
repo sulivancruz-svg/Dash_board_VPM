@@ -31,8 +31,19 @@ function readStoredState(): DashboardDateRangeState {
     }
 
     const parsed = JSON.parse(raw) as Partial<DashboardDateRangeState>;
+    const activePeriod = parsed.activePeriod || DEFAULT_STATE.activePeriod;
+
+    // Para presets (7/14/30 dias), recalcula as datas sempre com base em hoje
+    // Evita datas stale quando o usuário retorna no dia seguinte
+    if (activePeriod !== 'custom') {
+      return {
+        activePeriod,
+        dateRange: getPresetDateRange(Number.parseInt(activePeriod, 10)),
+      };
+    }
+
     return {
-      activePeriod: parsed.activePeriod || DEFAULT_STATE.activePeriod,
+      activePeriod,
       dateRange: {
         start: parsed.dateRange?.start || DEFAULT_STATE.dateRange.start,
         end: parsed.dateRange?.end || DEFAULT_STATE.dateRange.end,
