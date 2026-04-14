@@ -1,4 +1,4 @@
-import { blobDeleteFile, blobGetJson, blobSetJson, blobUploadFile } from '@/lib/storage';
+import { blobDeleteFile, blobUploadFile, kvGet, kvSet } from '@/lib/storage';
 
 export interface BrandingSettings {
   companyName: string;
@@ -12,9 +12,11 @@ const DEFAULT_SETTINGS: BrandingSettings = {
   updatedAt: null,
 };
 
+const KV_KEY = 'branding-settings';
+
 async function readStore(): Promise<BrandingSettings> {
   try {
-    const parsed = await blobGetJson<Partial<BrandingSettings>>('branding-settings');
+    const parsed = await kvGet<Partial<BrandingSettings>>(KV_KEY);
     if (!parsed) return DEFAULT_SETTINGS;
     return {
       companyName: parsed.companyName || DEFAULT_SETTINGS.companyName,
@@ -40,12 +42,16 @@ export async function saveBrandingSettings(input: {
   let nextLogoPath = current.logoPath;
 
   if (input.removeLogo) {
-    if (current.logoPath) await blobDeleteFile(current.logoPath);
+    if (current.logoPath) {
+      try { await blobDeleteFile(current.logoPath); } catch { /* ignore */ }
+    }
     nextLogoPath = null;
   }
 
   if (input.logoBuffer && input.logoFileName) {
-    if (current.logoPath) await blobDeleteFile(current.logoPath);
+    if (current.logoPath) {
+      try { await blobDeleteFile(current.logoPath); } catch { /* ignore */ }
+    }
 
     const ext = input.logoFileName.split('.').pop()?.toLowerCase() || 'png';
     const safeExt = ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext) ? ext : 'png';
@@ -66,7 +72,7 @@ export async function saveBrandingSettings(input: {
     updatedAt: new Date().toISOString(),
   };
 
-  await blobSetJson('branding-settings', nextSettings, 'public');
+  await kvSet(KV_KEY, nextSettings);
   return nextSettings;
 }
 
