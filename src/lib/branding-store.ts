@@ -66,7 +66,7 @@ export async function saveBrandingSettings(input: {
     updatedAt: new Date().toISOString(),
   };
 
-  await blobSetJson('branding-settings', nextSettings);
+  await blobSetJson('branding-settings', nextSettings, 'public');
   return nextSettings;
 }
 

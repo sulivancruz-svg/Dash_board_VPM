@@ -75,12 +75,19 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
       const result = await list({ prefix: `${key}.json`, limit: 1 });
       const blobs = result?.blobs ?? [];
       if (blobs.length === 0) return null;
-      // Use downloadUrl for private blobs (includes auth signature); fall back to url
-      const fetchUrl = (blobs[0] as { downloadUrl?: string; url: string }).downloadUrl || blobs[0].url;
-      const fetchHeaders: Record<string, string> = {
-        Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-      };
-      const res = await fetch(fetchUrl, { cache: 'no-store', headers: fetchHeaders });
+      // Try public URL first (no auth), fall back to downloadUrl for private blobs
+      const blobEntry = blobs[0] as { downloadUrl?: string; url: string };
+      const fetchUrl = blobEntry.url;
+      const fetchOptions: RequestInit = { cache: 'no-store' };
+      let res = await fetch(fetchUrl, fetchOptions);
+      // If public fetch fails, try with Bearer token (private blob)
+      if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
+        const authUrl = blobEntry.downloadUrl || fetchUrl;
+        res = await fetch(authUrl, {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+        });
+      }
       if (!res.ok) return null;
       return (await res.json()) as T;
     } catch (e) {
@@ -100,7 +107,7 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
 }
 
 /** Write a large JSON blob (prod: Vercel Blob, dev: local file). */
-export async function blobSetJson(key: string, value: unknown): Promise<void> {
+export async function blobSetJson(key: string, value: unknown, access: 'public' | 'private' = 'public'): Promise<void> {
   if (IS_BLOB) {
     const { put, list, del } = await import('@vercel/blob');
     // Remove old blob with this key before uploading new one
@@ -109,7 +116,7 @@ export async function blobSetJson(key: string, value: unknown): Promise<void> {
       await del(blobs.map((b) => b.url));
     }
     await put(`${key}.json`, JSON.stringify(value), {
-      access: 'private',
+      access,
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json',
