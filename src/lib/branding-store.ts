@@ -77,11 +77,9 @@ export async function getBrandingResponse(): Promise<{
   logoUrl: string | null;
 }> {
   const settings = await readStore();
-  // Public Vercel Blob URLs can be served directly; local paths go through proxy
+  // Always proxy through the API route — handles both public and private blobs server-side
   const logoUrl = settings.logoPath
-    ? settings.logoPath.startsWith('https://')
-      ? settings.logoPath
-      : `/api/settings/branding/logo?v=${encodeURIComponent(settings.updatedAt ?? 'logo')}`
+    ? `/api/settings/branding/logo?v=${encodeURIComponent(settings.updatedAt ?? 'logo')}`
     : null;
 
   return { ...settings, logoUrl };

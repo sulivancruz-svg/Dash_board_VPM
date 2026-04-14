@@ -22,21 +22,53 @@ export async function GET() {
       return new NextResponse('Logo nao configurada', { status: 404 });
     }
 
-    // Production: logoPath is a Vercel Blob URL (public) — proxy to avoid CORS/caching issues
+    // Production: logoPath is a Vercel Blob URL
     if (settings.logoPath.startsWith('https://')) {
-      const fetchHeaders: Record<string, string> = {};
-      // Include auth token only if the blob may be private (legacy uploads)
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        fetchHeaders.Authorization = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+      // Step 1: try fetching directly (works for public blobs)
+      let res = await fetch(settings.logoPath, { cache: 'no-store' });
+
+      // Step 2: fallback — use Vercel Blob SDK get() for private blobs
+      if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
+        try {
+          const { get } = await import('@vercel/blob');
+          const blobResult = await get(settings.logoPath, { access: 'private' } as Parameters<typeof get>[1]);
+          if (blobResult) {
+            // blobResult is a Response-like object with stream
+            const stream = (blobResult as unknown as { stream: ReadableStream }).stream;
+            if (stream) {
+              const chunks: Uint8Array[] = [];
+              const reader = stream.getReader();
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (value) chunks.push(value);
+              }
+              const buffer = Buffer.concat(chunks);
+              return new NextResponse(buffer, {
+                status: 200,
+                headers: {
+                  'Content-Type': getContentType(settings.logoPath),
+                  'Cache-Control': 'public, max-age=3600',
+                },
+              });
+            }
+          }
+        } catch (sdkErr) {
+          console.error('Blob SDK get() failed:', sdkErr);
+        }
+
+        // Step 3: last resort — try with Authorization header
+        res = await fetch(settings.logoPath, {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+        });
       }
-      const res = await fetch(settings.logoPath, {
-        headers: fetchHeaders,
-        cache: 'no-store',
-      });
+
       if (!res.ok) {
-        console.error('Blob logo fetch failed:', res.status, await res.text().catch(() => ''));
-        return new NextResponse('Logo nao encontrada no blob store', { status: 404 });
+        console.error('Blob logo fetch failed:', res.status, settings.logoPath);
+        return new NextResponse('Logo nao encontrada', { status: 404 });
       }
+
       const buffer = Buffer.from(await res.arrayBuffer());
       const contentType = res.headers.get('content-type') || getContentType(settings.logoPath);
       return new NextResponse(buffer, {
