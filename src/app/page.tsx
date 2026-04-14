@@ -354,11 +354,6 @@ export default function OverviewPage() {
                     <p className="text-lg font-bold text-emerald-600">{data?.kpis.vendas > 0 ? fmt(data.kpis.vendas) : '—'}</p>
                     <p className="text-[10px] text-slate-400 uppercase">Vendas</p>
                   </div>
-                  {data?.kpis.conversionRate != null && (
-                    <span className={`ml-1 text-xs font-bold px-2 py-0.5 rounded-full ${data.kpis.conversionRate >= 20 ? 'bg-emerald-100 text-emerald-700' : data.kpis.conversionRate >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>
-                      {fmt(data.kpis.conversionRate, 'pct')}
-                    </span>
-                  )}
                 </div>
                 {/* Perdidos */}
                 {data?.pipedrive.totalLost > 0 && (
