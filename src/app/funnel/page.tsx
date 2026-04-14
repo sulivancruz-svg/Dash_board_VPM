@@ -269,7 +269,6 @@ export default function FunnelPage() {
               <FunnelStep
                 label="Vendas (Ganho)"
                 value={fmt(totalVendas)}
-                sub={convGeral ? `${fmt(convGeral, 'pct')} conv.` : undefined}
                 color="bg-emerald-500 text-white"
                 source="Monde"
               />
