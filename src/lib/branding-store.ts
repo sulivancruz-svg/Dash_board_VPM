@@ -56,7 +56,7 @@ export async function saveBrandingSettings(input: {
       `branding-assets/${safeName}`,
       input.logoBuffer,
       contentType,
-      'private', // served via proxy /api/settings/branding/logo with Bearer auth
+      'public',
     );
   }
 
@@ -77,10 +77,11 @@ export async function getBrandingResponse(): Promise<{
   logoUrl: string | null;
 }> {
   const settings = await readStore();
-  // Always proxy through the API route — works for both local paths and
-  // private Vercel Blob URLs (the route fetches with Bearer auth).
+  // Public Vercel Blob URLs can be served directly; local paths go through proxy
   const logoUrl = settings.logoPath
-    ? `/api/settings/branding/logo?v=${encodeURIComponent(settings.updatedAt ?? 'logo')}`
+    ? settings.logoPath.startsWith('https://')
+      ? settings.logoPath
+      : `/api/settings/branding/logo?v=${encodeURIComponent(settings.updatedAt ?? 'logo')}`
     : null;
 
   return { ...settings, logoUrl };

@@ -19,6 +19,7 @@ interface PipedriveDeal {
   id: number;
   title?: string;
   status?: string;
+  value?: number | null;
   currency?: string | null;
   add_time?: string | null;
   won_time?: string | null;
@@ -338,6 +339,7 @@ export async function syncPipedriveDirectData(input: {
         status: String(deal.status || 'unknown'),
         ownerId,
         currency: typeof deal.currency === 'string' ? deal.currency : null,
+        value: typeof deal.value === 'number' ? deal.value : null,
         addTime: deal.add_time || null,
         wonTime: deal.won_time || null,
         ownerName: ownerId ? usersMap.get(ownerId) || null : null,

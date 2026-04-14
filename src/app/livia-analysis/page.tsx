@@ -1,20 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader, AlertCircle, ArrowRight } from 'lucide-react';
+import { Loader, AlertCircle, ArrowRight, TrendingUp, Clock, DollarSign } from 'lucide-react';
 import type { PipedriveDirectRecentDeal } from '@/lib/pipedrive-direct-store';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 import { DateRangeFilter } from '@/components/date-range-filter';
-
-interface LiviaStats {
-  total: number;
-  won: number;
-  open: number;
-  lost: number;
-  winRate: number;
-  byCanal: CanalRow[];
-  deals: PipedriveDirectRecentDeal[];
-}
 
 interface CanalRow {
   canal: string;
@@ -23,6 +13,20 @@ interface CanalRow {
   open: number;
   lost: number;
   winRate: number;
+  avgValue: number | null;    // ticket médio dos won
+  avgDaysToWin: number | null; // tempo médio até ganho
+}
+
+interface LiviaStats {
+  total: number;
+  won: number;
+  open: number;
+  lost: number;
+  winRate: number;
+  avgValue: number | null;
+  avgDaysToWin: number | null;
+  byCanal: CanalRow[];
+  deals: PipedriveDirectRecentDeal[];
 }
 
 function getDateOnly(v: string | null | undefined) {
@@ -35,15 +39,23 @@ function inRange(v: string | null | undefined, s: string, e: string) {
 function pct(n: number, total: number) {
   return total > 0 ? `${((n / total) * 100).toFixed(1)}%` : '—';
 }
+function fmtBRL(v: number | null) {
+  if (v == null) return '—';
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+}
+function daysBetween(a: string | null, b: string | null): number | null {
+  if (!a || !b) return null;
+  const da = new Date(a.slice(0, 10));
+  const db = new Date(b.slice(0, 10));
+  const diff = Math.round((db.getTime() - da.getTime()) / 86400000);
+  return diff >= 0 ? diff : null;
+}
 
-function FunnelStep({ label, value, sub, color, source }: {
-  label: string; value: string | number; sub?: string; color: string; source?: string;
+function FunnelStep({ label, value, sub, color }: {
+  label: string; value: string | number; sub?: string; color: string;
 }) {
   return (
-    <div className={`flex-1 min-w-[110px] ${color} rounded-2xl p-4 text-center relative`}>
-      {source && (
-        <span className="absolute top-2 right-2 text-[10px] font-bold opacity-60 uppercase tracking-wider">{source}</span>
-      )}
+    <div className={`flex-1 min-w-[110px] ${color} rounded-2xl p-4 text-center`}>
       <p className="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">{label}</p>
       <p className="text-2xl font-bold">{value}</p>
       {sub && <p className="text-xs opacity-70 mt-1">{sub}</p>}
@@ -63,6 +75,23 @@ function statusBadge(status: string) {
   return <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Aberto</span>;
 }
 
+function InsightCard({ icon, label, value, sub, color }: {
+  icon: React.ReactNode; label: string; value: string; sub?: string; color: string;
+}) {
+  return (
+    <div className={`rounded-xl border p-4 ${color}`}>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 opacity-70">{icon}</div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-0.5">{label}</p>
+          <p className="text-lg font-bold text-slate-900">{value}</p>
+          {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LiviaAnalysisPage() {
   const { activePeriod, dateRange, setPresetPeriod, setCustomDateRange } = useDashboardDateRange();
   const [allDeals, setAllDeals] = useState<PipedriveDirectRecentDeal[]>([]);
@@ -70,7 +99,6 @@ export default function LiviaAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<LiviaStats | null>(null);
 
-  // Carrega todos os deals da Livia (uma vez)
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -109,39 +137,63 @@ export default function LiviaAnalysisPage() {
     load();
   }, []);
 
-  // Recalcula quando período muda
   useEffect(() => {
     if (!allDeals.length) return;
 
     const filtered = allDeals.filter(d => {
       const status = (d.status || '').toLowerCase();
-      // Won: filtra por wonTime (quando o deal foi ganho, não quando foi criado)
       if (status === 'won') {
         const wt = getDateOnly(d.wonTime);
         return wt ? wt >= dateRange.start && wt <= dateRange.end : inRange(d.addTime, dateRange.start, dateRange.end);
       }
-      // Open: mostra todos os deals abertos (estão ativos agora no pipeline)
       if (status === 'open') return true;
-      // Lost: filtra por data de criação (não temos lostTime)
       return inRange(d.addTime, dateRange.start, dateRange.end);
     });
 
     let won = 0, open = 0, lost = 0;
-    const canalMap = new Map<string, CanalRow>();
+    const wonValues: number[] = [];
+    const wonDays: number[] = [];
+    const canalMap = new Map<string, { canal: string; total: number; won: number; open: number; lost: number; values: number[]; days: number[] }>();
 
     filtered.forEach(d => {
       const s = (d.status || '').toLowerCase();
-      if (s === 'won') won++; else if (s === 'lost') lost++; else open++;
+      if (s === 'won') { won++; } else if (s === 'lost') { lost++; } else { open++; }
+
+      if (s === 'won') {
+        if (d.value != null) wonValues.push(d.value);
+        const days = daysBetween(d.addTime, d.wonTime);
+        if (days != null) wonDays.push(days);
+      }
 
       const canal = d.canal || d.howArrived || 'Não informado';
-      const row = canalMap.get(canal) ?? { canal, total: 0, won: 0, open: 0, lost: 0, winRate: 0 };
+      const row = canalMap.get(canal) ?? { canal, total: 0, won: 0, open: 0, lost: 0, values: [], days: [] };
       row.total++;
-      if (s === 'won') row.won++; else if (s === 'lost') row.lost++; else row.open++;
+      if (s === 'won') {
+        row.won++;
+        if (d.value != null) row.values.push(d.value);
+        const days = daysBetween(d.addTime, d.wonTime);
+        if (days != null) row.days.push(days);
+      } else if (s === 'lost') {
+        row.lost++;
+      } else {
+        row.open++;
+      }
       canalMap.set(canal, row);
     });
 
-    const byCanal = Array.from(canalMap.values())
-      .map(r => ({ ...r, winRate: r.total > 0 ? (r.won / r.total) * 100 : 0 }))
+    const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+    const byCanal: CanalRow[] = Array.from(canalMap.values())
+      .map(r => ({
+        canal: r.canal,
+        total: r.total,
+        won: r.won,
+        open: r.open,
+        lost: r.lost,
+        winRate: r.total > 0 ? (r.won / r.total) * 100 : 0,
+        avgValue: avg(r.values),
+        avgDaysToWin: avg(r.days) != null ? Math.round(avg(r.days)!) : null,
+      }))
       .sort((a, b) => b.total - a.total);
 
     const sorted = [...filtered].sort((a, b) => {
@@ -150,8 +202,21 @@ export default function LiviaAnalysisPage() {
       return diff !== 0 ? diff : String(b.addTime || '').localeCompare(String(a.addTime || ''));
     });
 
-    setStats({ total: filtered.length, won, open, lost, winRate: filtered.length > 0 ? (won / filtered.length) * 100 : 0, byCanal, deals: sorted });
+    setStats({
+      total: filtered.length,
+      won, open, lost,
+      winRate: filtered.length > 0 ? (won / filtered.length) * 100 : 0,
+      avgValue: avg(wonValues),
+      avgDaysToWin: avg(wonDays) != null ? Math.round(avg(wonDays)!) : null,
+      byCanal,
+      deals: sorted,
+    });
   }, [allDeals, dateRange.start, dateRange.end]);
+
+  // Insights por canal
+  const bestConvCanal = stats?.byCanal.filter(r => r.won > 0).sort((a, b) => b.winRate - a.winRate)[0];
+  const bestTicketCanal = stats?.byCanal.filter(r => r.avgValue != null).sort((a, b) => (b.avgValue ?? 0) - (a.avgValue ?? 0))[0];
+  const fastestCanal = stats?.byCanal.filter(r => r.avgDaysToWin != null && r.won > 0).sort((a, b) => (a.avgDaysToWin ?? 999) - (b.avgDaysToWin ?? 999))[0];
 
   return (
     <div className="space-y-6">
@@ -160,7 +225,7 @@ export default function LiviaAnalysisPage() {
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Análise Comercial</p>
           <h1 className="text-2xl font-bold text-slate-900">Análise Livia</h1>
-          <p className="text-xs text-slate-400 mt-1">Deals do funil Pré Vendas - Livia por data de criação</p>
+          <p className="text-xs text-slate-400 mt-1">Funil Pré Vendas — deals won por wonTime, abertos sempre visíveis, perdidos por criação</p>
         </div>
         <DateRangeFilter
           activePeriod={activePeriod}
@@ -189,13 +254,13 @@ export default function LiviaAnalysisPage() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-5">Funil Geral</h2>
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              <FunnelStep label="Deals Criados" value={stats?.total ?? 0} sub="no período" color="bg-blue-500 text-white" source="PIPE" />
+              <FunnelStep label="Deals" value={stats?.total ?? 0} sub="no período" color="bg-blue-500 text-white" />
               <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <FunnelStep label="Em Aberto"    value={stats?.open ?? 0}  sub={pct(stats?.open ?? 0, stats?.total ?? 0)} color="bg-amber-500 text-white" />
+              <FunnelStep label="Em Aberto" value={stats?.open ?? 0} sub={pct(stats?.open ?? 0, stats?.total ?? 0)} color="bg-amber-500 text-white" />
               <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <FunnelStep label="Won (Viagem)" value={stats?.won ?? 0}   sub={pct(stats?.won ?? 0, stats?.total ?? 0)}  color="bg-emerald-500 text-white" />
+              <FunnelStep label="Won" value={stats?.won ?? 0} sub={pct(stats?.won ?? 0, stats?.total ?? 0)} color="bg-emerald-500 text-white" />
               <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <FunnelStep label="Perdidos"     value={stats?.lost ?? 0}  sub={pct(stats?.lost ?? 0, stats?.total ?? 0)} color="bg-red-400 text-white" />
+              <FunnelStep label="Perdidos" value={stats?.lost ?? 0} sub={pct(stats?.lost ?? 0, stats?.total ?? 0)} color="bg-red-400 text-white" />
             </div>
           </div>
 
@@ -222,22 +287,57 @@ export default function LiviaAnalysisPage() {
             })}
           </div>
 
+          {/* Insights por canal */}
+          {(bestConvCanal || bestTicketCanal || fastestCanal) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {bestConvCanal && (
+                <InsightCard
+                  icon={<TrendingUp className="w-4 h-4 text-emerald-600" />}
+                  label="Maior taxa de conversão"
+                  value={`${bestConvCanal.winRate.toFixed(1)}% won`}
+                  sub={bestConvCanal.canal}
+                  color="bg-emerald-50 border border-emerald-200"
+                />
+              )}
+              {bestTicketCanal && (
+                <InsightCard
+                  icon={<DollarSign className="w-4 h-4 text-blue-600" />}
+                  label="Maior ticket médio (won)"
+                  value={fmtBRL(bestTicketCanal.avgValue)}
+                  sub={bestTicketCanal.canal}
+                  color="bg-blue-50 border border-blue-200"
+                />
+              )}
+              {fastestCanal && (
+                <InsightCard
+                  icon={<Clock className="w-4 h-4 text-purple-600" />}
+                  label="Fechamento mais rápido"
+                  value={`${fastestCanal.avgDaysToWin} dias`}
+                  sub={fastestCanal.canal}
+                  color="bg-purple-50 border border-purple-200"
+                />
+              )}
+            </div>
+          )}
+
           {/* Breakdown por Canal */}
           {(stats?.byCanal?.length ?? 0) > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Por Canal de Origem</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Ticket médio e tempo calculados apenas sobre deals Won</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
+                <table className="w-full min-w-[780px]">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Canal</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Em Aberto</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Won</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Perdidos</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">% Won</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Ticket Médio</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tempo Médio</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -245,9 +345,6 @@ export default function LiviaAnalysisPage() {
                       <tr key={row.canal} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-slate-800">{row.canal}</td>
                         <td className="px-4 py-3 text-sm text-slate-600 text-right">{row.total}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-xs font-semibold text-amber-600">{row.open}</span>
-                        </td>
                         <td className="px-4 py-3 text-right">
                           <span className="text-xs font-semibold text-emerald-600">{row.won}</span>
                         </td>
@@ -257,6 +354,14 @@ export default function LiviaAnalysisPage() {
                         <td className="px-4 py-3 text-right">
                           <span className={`text-xs font-bold ${row.winRate >= 20 ? 'text-emerald-600' : row.winRate >= 10 ? 'text-amber-600' : 'text-red-500'}`}>
                             {row.winRate.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs font-medium text-slate-700">{fmtBRL(row.avgValue)}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs font-medium text-slate-700">
+                            {row.avgDaysToWin != null ? `${row.avgDaysToWin}d` : '—'}
                           </span>
                         </td>
                       </tr>
@@ -276,33 +381,48 @@ export default function LiviaAnalysisPage() {
 
             {(stats?.deals?.length ?? 0) > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px]">
+                <table className="w-full min-w-[820px]">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Deal</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Canal</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Responsável</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Etapa</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Criado em</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Dias p/ won</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {stats!.deals.map(deal => (
-                      <tr key={deal.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-slate-800">{deal.title || `Deal ${deal.id}`}</p>
-                          <p className="text-xs text-slate-400">ID {deal.id}</p>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.canal || deal.howArrived || 'Não informado'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.ownerName || '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{deal.stageName || '—'}</td>
-                        <td className="px-4 py-3">{statusBadge((deal.status || '').toLowerCase())}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                          {deal.addTime ? new Date(deal.addTime).toLocaleDateString('pt-BR') : '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {stats!.deals.map(deal => {
+                      const daysToWin = (deal.status || '').toLowerCase() === 'won'
+                        ? daysBetween(deal.addTime, deal.wonTime)
+                        : null;
+                      return (
+                        <tr key={deal.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-medium text-slate-800">{deal.title || `Deal ${deal.id}`}</p>
+                            <p className="text-xs text-slate-400">ID {deal.id}</p>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{deal.canal || deal.howArrived || 'Não informado'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{deal.stageName || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700 text-right font-medium">
+                            {deal.value != null ? fmtBRL(deal.value) : '—'}
+                          </td>
+                          <td className="px-4 py-3">{statusBadge((deal.status || '').toLowerCase())}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                            {deal.addTime ? new Date(deal.addTime).toLocaleDateString('pt-BR') : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                            {daysToWin != null ? (
+                              <span className={`font-medium ${daysToWin <= 7 ? 'text-emerald-600' : daysToWin <= 30 ? 'text-amber-600' : 'text-slate-500'}`}>
+                                {daysToWin}d
+                              </span>
+                            ) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

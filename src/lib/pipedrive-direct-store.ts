@@ -38,6 +38,7 @@ export interface PipedriveDirectRecentDeal {
   status: string;
   ownerId: number | null;
   currency: string | null;
+  value: number | null;
   addTime: string | null;
   wonTime: string | null;
   ownerName: string | null;

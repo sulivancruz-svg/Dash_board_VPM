@@ -22,12 +22,15 @@ export async function GET() {
       return new NextResponse('Logo nao configurada', { status: 404 });
     }
 
-    // Production: logoPath is a Vercel Blob URL — proxy with Bearer auth
+    // Production: logoPath is a Vercel Blob URL (public) — proxy to avoid CORS/caching issues
     if (settings.logoPath.startsWith('https://')) {
+      const fetchHeaders: Record<string, string> = {};
+      // Include auth token only if the blob may be private (legacy uploads)
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        fetchHeaders.Authorization = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+      }
       const res = await fetch(settings.logoPath, {
-        headers: {
-          Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ''}`,
-        },
+        headers: fetchHeaders,
         cache: 'no-store',
       });
       if (!res.ok) {
