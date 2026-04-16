@@ -49,7 +49,7 @@ export async function getGoogleAdsCredentials(): Promise<GoogleAdsCredentials | 
 }
 
 export async function setGoogleAdsCredentials(creds: GoogleAdsCredentials): Promise<void> {
-  await blobSetJson(BLOB_KEY, creds);
+  await blobSetJson(BLOB_KEY, creds, 'private');
 }
 
 export async function deleteGoogleAdsCredentials(): Promise<void> {

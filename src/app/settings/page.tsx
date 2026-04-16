@@ -31,6 +31,27 @@ interface BrandingSettings {
   updatedAt: string | null;
 }
 
+interface RuntimeStatus {
+  auth: {
+    hasDashboardPassword: boolean;
+    hasEncryptionKey: boolean;
+    hasNextAuthSecret: boolean;
+    secretSource: string | null;
+  };
+  issues: Array<{
+    code: string;
+    message: string;
+    severity: 'error' | 'warning';
+  }>;
+  storage: {
+    hasBlob: boolean;
+    hasKv: boolean;
+    hasPersistentStorage: boolean;
+    mode: 'persistent' | 'ephemeral';
+    runtime: 'vercel' | 'local';
+  };
+}
+
 export default function SettingsPage() {
   // ── Meta Ads ──
   const [metaStatus, setMetaStatus] = useState<'connected' | 'disconnected' | 'expired'>('disconnected');
@@ -84,6 +105,7 @@ export default function SettingsPage() {
   const [brandingLogoFile, setBrandingLogoFile] = useState<File | null>(null);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingMessage, setBrandingMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
 
   // ── Init ──
   useEffect(() => {
@@ -121,6 +143,13 @@ export default function SettingsPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d) setSourceControls({ sdrEnabled: d.sdrEnabled ?? true, pipedriveEnabled: d.pipedriveEnabled ?? true, googleAdsEnabled: d.googleAdsEnabled ?? true });
+      })
+      .catch(() => {});
+
+    fetch('/api/system/runtime-status')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) setRuntimeStatus(d);
       })
       .catch(() => {});
   }, []);
@@ -391,6 +420,45 @@ export default function SettingsPage() {
         <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Sistema</p>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Configurações</h1>
       </div>
+
+      {runtimeStatus && runtimeStatus.issues.length > 0 && (
+        <div className={`rounded-xl border p-4 ${
+          runtimeStatus.issues.some(issue => issue.severity === 'error')
+            ? 'border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20'
+            : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20'
+        }`}>
+          <div className="flex items-start gap-3">
+            <AlertCircle className={`mt-0.5 h-5 w-5 ${
+              runtimeStatus.issues.some(issue => issue.severity === 'error')
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-amber-600 dark:text-amber-400'
+            }`} />
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                Ambiente da Vercel requer ajuste
+              </p>
+              <div className="space-y-1">
+                {runtimeStatus.issues.map(issue => (
+                  <p
+                    key={issue.code}
+                    className={`text-sm ${
+                      issue.severity === 'error'
+                        ? 'text-red-700 dark:text-red-300'
+                        : 'text-amber-700 dark:text-amber-300'
+                    }`}
+                  >
+                    {issue.message}
+                  </p>
+                ))}
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Storage detectado: {runtimeStatus.storage.hasBlob ? 'Blob' : runtimeStatus.storage.hasKv ? 'KV' : 'nenhum'}.
+                Segredo de sessao: {runtimeStatus.auth.secretSource || 'nao configurado'}.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div className="px-6 py-6 border-b border-slate-200 dark:border-slate-700">

@@ -77,7 +77,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Pipedrive direct connect error:', error);
-    return NextResponse.json({ error: 'Nao foi possivel validar a conexao com o Pipedrive' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Nao foi possivel validar a conexao com o Pipedrive' },
+      { status: 500 },
+    );
   }
 }
 
