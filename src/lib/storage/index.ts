@@ -31,7 +31,7 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   }
   // On Vercel without KV: use Blob as persistent fallback (avoids ephemeral /tmp)
   if (IS_BLOB) {
-    return blobGetJson<T>(`kv-${key}`);
+    return blobGetJson<T>(key);
   }
   const file = localFilePath(key);
   try {
@@ -53,7 +53,7 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
   }
   // On Vercel without KV: use Blob as persistent fallback (avoids ephemeral /tmp)
   if (IS_BLOB) {
-    await blobSetJson(`kv-${key}`, value, 'public');
+    await blobSetJson(key, value, 'public');
     return;
   }
   const file = localFilePath(key);
@@ -69,7 +69,7 @@ export async function kvDel(key: string): Promise<void> {
   }
   // On Vercel without KV: use Blob as persistent fallback
   if (IS_BLOB) {
-    await blobDel(`kv-${key}`);
+    await blobDel(key);
     return;
   }
   const file = localFilePath(key);
