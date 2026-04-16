@@ -12,16 +12,23 @@ export const revalidate = 0;
 
 export async function POST() {
   try {
+    console.log('[pipedrive-direct/sync] Starting sync...');
     const credentials = await getPipedriveDirectCredentials();
     if (!credentials) {
+      console.log('[pipedrive-direct/sync] No credentials found');
       return NextResponse.json({ error: 'Configure a conexao com o Pipedrive primeiro' }, { status: 400 });
     }
 
+    console.log('[pipedrive-direct/sync] Fetching data from Pipedrive...');
     const data = await syncPipedriveDirectData(credentials);
+    console.log('[pipedrive-direct/sync] Fetched:', data.totalDeals, 'deals');
+
+    console.log('[pipedrive-direct/sync] Saving to blob storage...');
     await setPipedriveDirectData(data);
 
     const dashboardStore = await getPipedriveData();
     if (dashboardStore?.mondeDeals?.length) {
+      console.log('[pipedrive-direct/sync] Updating dashboard store with', dashboardStore.mondeDeals.length, 'monde deals');
       await setPipedriveData(buildPipedriveDashboardStore({
         updatedAt: data.updatedAt,
         mondeDeals: dashboardStore.mondeDeals,
@@ -31,6 +38,7 @@ export async function POST() {
       }));
     }
 
+    console.log('[pipedrive-direct/sync] Sync completed successfully');
     return NextResponse.json({
       message: 'Pipedrive sincronizado com sucesso',
       updatedAt: data.updatedAt,
@@ -40,7 +48,7 @@ export async function POST() {
       totalLost: data.totalLost,
     });
   } catch (error) {
-    console.error('Pipedrive direct sync error:', error);
+    console.error('[pipedrive-direct/sync] Sync failed:', error);
     return NextResponse.json({ error: 'Erro ao sincronizar dados do Pipedrive' }, { status: 500 });
   }
 }

@@ -125,11 +125,19 @@ export async function clearPipedriveDirectCredentials(): Promise<void> {
 }
 
 export async function getPipedriveDirectData(): Promise<PipedriveDirectData | null> {
-  return await blobGetJson<PipedriveDirectData>('pipedrive-direct-data');
+  const data = await blobGetJson<PipedriveDirectData>('pipedrive-direct-data');
+  if (data) {
+    console.log('[pipedrive-direct] Data loaded:', data.totalDeals, 'deals');
+  } else {
+    console.log('[pipedrive-direct] No data found in blob');
+  }
+  return data;
 }
 
 export async function setPipedriveDirectData(data: PipedriveDirectData): Promise<void> {
+  console.log('[pipedrive-direct] Saving data:', data.totalDeals, 'deals, updated:', data.updatedAt);
   await blobSetJson('pipedrive-direct-data', data);
+  console.log('[pipedrive-direct] Data saved successfully');
 }
 
 export async function clearPipedriveDirectData(): Promise<void> {
