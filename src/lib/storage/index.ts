@@ -38,6 +38,10 @@ function shouldBlockEphemeralPersistence(): boolean {
   return IS_VERCEL && !IS_BLOB && !IS_KV;
 }
 
+function shouldUseLocalFallback(): boolean {
+  return !IS_VERCEL;
+}
+
 function getEphemeralStorageError(operation: string): Error {
   return new Error(
     `${operation} requer storage persistente na Vercel. Conecte Vercel Blob ou KV; o fallback local nao mantem tokens entre execucoes.`,
@@ -66,6 +70,9 @@ export async function kvGet<T>(key: string): Promise<T | null> {
     warnEphemeralRead('kvGet', key);
     return null;
   }
+  if (!shouldUseLocalFallback()) {
+    return null;
+  }
   const file = localFilePath(key);
   try {
     if (fs.existsSync(file)) {
@@ -87,6 +94,9 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`kvSet(${key})`);
   }
+  if (!shouldUseLocalFallback()) {
+    throw new Error(`kvSet(${key}) falhou sem fallback local disponivel na Vercel.`);
+  }
   const file = localFilePath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
@@ -100,6 +110,9 @@ export async function kvDel(key: string): Promise<void> {
   }
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`kvDel(${key})`);
+  }
+  if (!shouldUseLocalFallback()) {
+    throw new Error(`kvDel(${key}) falhou sem fallback local disponivel na Vercel.`);
   }
   const file = localFilePath(key);
   if (fs.existsSync(file)) fs.unlinkSync(file);
@@ -147,6 +160,9 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
     warnEphemeralRead('blobGetJson', key);
     return null;
   }
+  if (!shouldUseLocalFallback()) {
+    return null;
+  }
   const file = localBlobPath(key);
   try {
     if (fs.existsSync(file)) {
@@ -188,6 +204,9 @@ export async function blobSetJson(key: string, value: unknown, access: 'public' 
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`blobSetJson(${key})`);
   }
+  if (!shouldUseLocalFallback()) {
+    throw new Error(`blobSetJson(${key}) falhou sem fallback local disponivel na Vercel.`);
+  }
   const file = localBlobPath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
@@ -214,6 +233,9 @@ export async function blobDel(key: string): Promise<void> {
   }
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`blobDel(${key})`);
+  }
+  if (!shouldUseLocalFallback()) {
+    throw new Error(`blobDel(${key}) falhou sem fallback local disponivel na Vercel.`);
   }
   const file = localBlobPath(key);
   if (fs.existsSync(file)) fs.unlinkSync(file);
@@ -242,12 +264,13 @@ export async function blobUploadFile(
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`blobUploadFile(${blobPath})`);
   }
+  if (!shouldUseLocalFallback()) {
+    throw new Error(`blobUploadFile(${blobPath}) falhou sem fallback local disponivel na Vercel.`);
+  }
   // Fallback: write to /tmp on Vercel (ephemeral) or local filesystem in dev
-  const localPath = IS_VERCEL
-    ? path.join('/tmp', blobPath.replace(/\//g, '-'))
-    : blobPath.startsWith('branding-assets/')
-      ? path.join(process.cwd(), 'public', blobPath)
-      : path.join(process.cwd(), 'historical-imports', blobPath.replace('historical-imports/', ''));
+  const localPath = blobPath.startsWith('branding-assets/')
+    ? path.join(process.cwd(), 'public', blobPath)
+    : path.join(process.cwd(), 'historical-imports', blobPath.replace('historical-imports/', ''));
   fs.mkdirSync(path.dirname(localPath), { recursive: true });
   fs.writeFileSync(localPath, buffer);
   return `/${blobPath}`;
@@ -264,6 +287,9 @@ export async function blobDeleteFile(urlOrPath: string): Promise<void> {
   }
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`blobDeleteFile(${urlOrPath})`);
+  }
+  if (!shouldUseLocalFallback()) {
+    throw new Error(`blobDeleteFile(${urlOrPath}) falhou sem fallback local disponivel na Vercel.`);
   }
   // Local: resolve absolute path
   let localPath: string;
