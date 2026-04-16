@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMetaToken } from '@/lib/meta-token-store';
-import { getSdrData, getPipedriveData } from '@/lib/data-store';
+import { getSdrData, getPipedriveData, setPipedriveData } from '@/lib/data-store';
 import { getSourceControls } from '@/lib/source-controls';
 import { attributeChannel, ChannelAttribution, ATTRIBUTION_LABELS } from '@/lib/channel-mapping';
 import { getGoogleAdsDataForDateRange, getGoogleAdsDataForPeriod } from '@/lib/google-ads-store';
 import { buildPtBrDateLabel, resolveDateRange, parseIsoDate, formatIsoDate } from '@/lib/date-range';
 import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
+import { getGoogleAdsCredentials } from '@/lib/google-ads-credentials-store';
+import { syncGoogleAdsDataSnapshot } from '@/lib/google-ads-sync';
+import { buildPipedriveDashboardStore } from '@/lib/pipedrive-dashboard-store';
+import { getPipedriveDirectCredentials, getPipedriveDirectData } from '@/lib/pipedrive-direct-store';
+import { syncPipedriveDirectSnapshot } from '@/lib/pipedrive-direct-sync';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -25,6 +30,63 @@ function buildPeriodLabel(days: number): string {
   return `${fmt(start)} – ${fmt(now)}`;
 }
 
+async function loadGoogleAdsOverviewData(start: string, end: string, periodDays: number) {
+  let googleAdsData = await getGoogleAdsDataForDateRange(start, end)
+    || await getGoogleAdsDataForPeriod(periodDays);
+
+  if (googleAdsData) {
+    return googleAdsData;
+  }
+
+  const credentials = await getGoogleAdsCredentials();
+  if (!credentials) {
+    return null;
+  }
+
+  try {
+    await syncGoogleAdsDataSnapshot();
+    googleAdsData = await getGoogleAdsDataForDateRange(start, end)
+      || await getGoogleAdsDataForPeriod(periodDays);
+  } catch (error) {
+    console.error('[overview] Google Ads bootstrap failed:', error);
+  }
+
+  return googleAdsData;
+}
+
+async function loadPipedriveOverviewData() {
+  let pipedriveData = await getPipedriveData();
+  if (pipedriveData) {
+    return pipedriveData;
+  }
+
+  const directData = await getPipedriveDirectData();
+  if (directData) {
+    pipedriveData = buildPipedriveDashboardStore({
+      updatedAt: directData.updatedAt,
+      mondeDeals: [],
+      directData,
+      fallbackPeriod: null,
+    });
+    await setPipedriveData(pipedriveData);
+    return pipedriveData;
+  }
+
+  const credentials = await getPipedriveDirectCredentials();
+  if (!credentials) {
+    return null;
+  }
+
+  try {
+    await syncPipedriveDirectSnapshot();
+    pipedriveData = await getPipedriveData();
+  } catch (error) {
+    console.error('[overview] Pipedrive bootstrap failed:', error);
+  }
+
+  return pipedriveData;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const range = resolveDateRange(
@@ -38,10 +100,10 @@ export async function GET(req: NextRequest) {
 
     // Carrega fontes conforme controles ativos
     const sdrData = sourceControls.sdrEnabled ? await getSdrData() : null;
-    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
+    const pipedriveData = sourceControls.pipedriveEnabled ? await loadPipedriveOverviewData() : null;
     const pipedriveMetrics = getPipedriveMetricsForRange(pipedriveData, range);
     const googleAdsData = sourceControls.googleAdsEnabled
-      ? await getGoogleAdsDataForDateRange(range.start, range.end) || await getGoogleAdsDataForPeriod(periodDays)
+      ? await loadGoogleAdsOverviewData(range.start, range.end, periodDays)
       : null;
 
     // ────────────────────────────────────────────────
@@ -58,7 +120,7 @@ export async function GET(req: NextRequest) {
       periodDays: range.periodDays,
     };
     const googleAdsPrevious = sourceControls.googleAdsEnabled
-      ? await getGoogleAdsDataForDateRange(previousRange.start, previousRange.end) || await getGoogleAdsDataForPeriod(periodDays)
+      ? await loadGoogleAdsOverviewData(previousRange.start, previousRange.end, periodDays)
       : null;
 
     // ────────────────────────────────────────────────
