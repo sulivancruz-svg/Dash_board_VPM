@@ -23,11 +23,15 @@ function localBlobPath(key: string): string {
 
 /* ─────────────────────────────────────────── KV ─── */
 
-/** Read a JSON value from KV (prod) or a local .json file (dev). */
+/** Read a JSON value from KV (prod) or Blob fallback or local file (dev). */
 export async function kvGet<T>(key: string): Promise<T | null> {
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
     return await kv.get<T>(key);
+  }
+  // On Vercel without KV: use Blob as persistent fallback (avoids ephemeral /tmp)
+  if (IS_BLOB) {
+    return blobGetJson<T>(`kv-${key}`);
   }
   const file = localFilePath(key);
   try {
@@ -40,22 +44,32 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   return null;
 }
 
-/** Write a JSON value to KV (prod) or a local .json file (dev). */
+/** Write a JSON value to KV (prod) or Blob fallback or local file (dev). */
 export async function kvSet(key: string, value: unknown): Promise<void> {
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
     await kv.set(key, value);
     return;
   }
+  // On Vercel without KV: use Blob as persistent fallback (avoids ephemeral /tmp)
+  if (IS_BLOB) {
+    await blobSetJson(`kv-${key}`, value, 'public');
+    return;
+  }
   const file = localFilePath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
 
-/** Delete a key from KV (prod) or delete the local .json file (dev). */
+/** Delete a key from KV (prod) or Blob fallback or local file (dev). */
 export async function kvDel(key: string): Promise<void> {
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
     await kv.del(key);
+    return;
+  }
+  // On Vercel without KV: use Blob as persistent fallback
+  if (IS_BLOB) {
+    await blobDel(`kv-${key}`);
     return;
   }
   const file = localFilePath(key);

@@ -40,16 +40,21 @@ export async function setMetaToken(
     accountId,
     accountName,
   };
+  console.log('[meta-token] Saving token for account:', accountId);
   await blobSetJson('meta-token', data);
+  console.log('[meta-token] Token saved successfully');
 }
 
 export async function getMetaToken(): Promise<MetaTokenStore | null> {
   const data = await blobGetJson<EncryptedTokenStore | LegacyTokenStore>('meta-token');
   if (data) {
+    console.log('[meta-token] Blob data found, account:', (data as any).accountId);
     try {
       if (isEncryptedStore(data)) {
+        const token = decryptToken(data.encryptedToken, data.iv);
+        console.log('[meta-token] Decrypted token from blob successfully');
         return {
-          token: decryptToken(data.encryptedToken, data.iv),
+          token,
           accountId: data.accountId,
           accountName: data.accountName,
         };
@@ -62,10 +67,15 @@ export async function getMetaToken(): Promise<MetaTokenStore | null> {
         return { token: legacy.token, accountId: legacy.accountId, accountName: legacy.accountName };
       }
     } catch (error) {
-      console.error('Error decoding meta token:', error);
+      console.error('[meta-token] Error decoding blob data:', error);
+      // If a stored token exists but cannot be decoded, avoid falling back to
+      // META_ACCESS_TOKEN. That fallback can hide encryption-key mismatch and
+      // make the app use an unrelated expired token from the environment.
+      return null;
     }
   }
 
+  console.log('[meta-token] No blob found, checking env vars');
   // Fallback: variáveis de ambiente fixas no Vercel
   const envToken = process.env.META_ACCESS_TOKEN;
   const rawAccountId = process.env.META_AD_ACCOUNT_ID || '';
@@ -74,6 +84,7 @@ export async function getMetaToken(): Promise<MetaTokenStore | null> {
     ? `act_${rawAccountId}`
     : rawAccountId;
   if (envToken && envAccountId) {
+    console.log('[meta-token] Using env var token for account:', envAccountId);
     return {
       token: envToken,
       accountId: envAccountId,
@@ -81,6 +92,7 @@ export async function getMetaToken(): Promise<MetaTokenStore | null> {
     };
   }
 
+  console.log('[meta-token] No token available');
   return null;
 }
 
