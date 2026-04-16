@@ -145,7 +145,6 @@ export async function GET(req: NextRequest) {
       summary: {
         totalReceita,
         totalVendas,
-        totalCohortConverted: pipedriveMetrics?.totalCohortConverted ?? 0,
         totalLeads: pipedriveMetrics?.totalLeads || sdrData?.totalLeads || totalLeads,
         totalLost: pipedriveMetrics?.totalLost || 0,
         totalQualified: sdrData?.totalQualified || 0,

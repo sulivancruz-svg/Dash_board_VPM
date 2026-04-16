@@ -587,7 +587,7 @@ export default function OverviewPage() {
           )}
 
           {/* ── Atalhos de navegação ── */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link href="/paid-media" className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:border-blue-300 hover:shadow-md transition-all group">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
@@ -618,17 +618,6 @@ export default function OverviewPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-800">Funil Comercial</p>
                   <p className="text-xs text-slate-400">Leads SDR, qualificados, vendas</p>
-                </div>
-              </div>
-            </Link>
-            <Link href="/corporate" className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:border-amber-300 hover:shadow-md transition-all group">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center group-hover:bg-amber-100 transition-colors">
-                  <BarChart3 className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">Corporativo</p>
-                  <p className="text-xs text-slate-400">Vendas da agência (Sheets)</p>
                 </div>
               </div>
             </Link>
