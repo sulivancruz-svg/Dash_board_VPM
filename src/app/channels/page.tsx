@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ATTRIBUTION_COLORS, ATTRIBUTION_LABELS, type ChannelAttribution } from '@/lib/channel-mapping';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
+import { fetchApiJson } from '@/lib/api-client';
 
 function fmt(n: number, type: 'currency' | 'number' | 'pct' = 'number'): string {
   if (type === 'currency') {
@@ -123,6 +124,7 @@ export default function ChannelsPage() {
   const [data, setData] = useState<ChannelsData | null>(null);
   const [mediaData, setMediaData] = useState<OverviewMediaData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -133,16 +135,18 @@ export default function ChannelsPage() {
     const controller = new AbortController();
 
     setLoading(true);
-    fetch(`/api/data/channels?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
-      .then((response) => response.json())
+    setError(null);
+    fetchApiJson<ChannelsData>(`/api/data/channels?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
       .then((payload) => {
         if (!controller.signal.aborted) {
           setData(payload);
         }
       })
       .catch((error) => {
-        if (error.name !== 'AbortError') {
+        if (error.name !== 'AbortError' && !controller.signal.aborted) {
           console.error(error);
+          setData(null);
+          setError(error instanceof Error ? error.message : 'Erro ao carregar canais.');
         }
       })
       .finally(() => {
@@ -162,8 +166,7 @@ export default function ChannelsPage() {
     });
     const controller = new AbortController();
 
-    fetch(`/api/data/overview?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
-      .then((response) => response.json())
+    fetchApiJson<OverviewMediaData>(`/api/data/overview?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
       .then((payload) => {
         if (!controller.signal.aborted) {
           setMediaData(payload);
@@ -212,6 +215,21 @@ export default function ChannelsPage() {
         <div className="flex items-center justify-center py-16">
           <Loader className="h-6 w-6 animate-spin text-blue-500" />
           <span className="ml-2 text-sm text-slate-500">Carregando...</span>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-12 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100">
+            <Upload className="h-7 w-7 text-red-400" />
+          </div>
+          <h3 className="mb-2 text-base font-semibold text-red-700">Erro ao carregar canais</h3>
+          <p className="mb-5 text-sm text-red-600">{error}</p>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+          >
+            <Upload className="h-4 w-4" />
+            Entrar novamente
+          </Link>
         </div>
       ) : !data?.hasData ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-12 text-center">

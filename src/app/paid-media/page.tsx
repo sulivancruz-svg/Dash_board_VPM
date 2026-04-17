@@ -8,6 +8,7 @@ import {
 import Link from 'next/link';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 import { DateRangeFilter } from '@/components/date-range-filter';
+import { fetchApiJson, ApiError } from '@/lib/api-client';
 
 function fmt(n: number, type: 'currency' | 'number' | 'pct' | 'decimal' = 'number'): string {
   if (type === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
@@ -475,12 +476,8 @@ export default function PaidMediaPage() {
           start: dateRange.start,
           end: dateRange.end,
         });
-        const res = await fetch(`/api/meta/campaigns?${params.toString()}`, { cache: 'no-store' });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Erro ao buscar dados Meta');
-        }
-        setMetaData(await res.json());
+        const payload = await fetchApiJson<CampaignsData>(`/api/meta/campaigns?${params.toString()}`, { cache: 'no-store' });
+        setMetaData(payload);
       } catch (err) {
         setMetaError(err instanceof Error ? err.message : 'Erro desconhecido');
       } finally {
@@ -504,22 +501,17 @@ export default function PaidMediaPage() {
           start: dateRange.start,
           end: dateRange.end,
         });
-        const res = await fetch(`/api/imports/google-ads?${params.toString()}`, { cache: 'no-store' });
-        if (!res.ok) {
-          if (res.status === 404) {
-            setGoogleData(null);
-          } else {
-            throw new Error('Erro ao buscar dados Google Ads');
-          }
-          return;
-        }
-        const payload = await res.json();
+        const payload = await fetchApiJson<any>(`/api/imports/google-ads?${params.toString()}`, { cache: 'no-store' });
         setGoogleData({
           ...payload,
           monthsCount: payload.monthsCount ?? payload.months?.length ?? 0,
         });
       } catch (err) {
-        setGoogleError(err instanceof Error ? err.message : 'Erro desconhecido');
+        if (err instanceof ApiError && err.status === 404) {
+          setGoogleData(null);
+        } else {
+          setGoogleError(err instanceof Error ? err.message : 'Erro desconhecido');
+        }
       } finally {
         setGoogleLoading(false);
       }
@@ -536,8 +528,7 @@ export default function PaidMediaPage() {
       end: dateRange.end,
     });
 
-    fetch(`/api/data/channels?${params.toString()}`, { cache: 'no-store' })
-      .then(r => r.json())
+    fetchApiJson<{ channels?: Array<{ attribution?: string; canal: string; vendas: number; receita: number; ticket: number; receitaPct: number }> }>(`/api/data/channels?${params.toString()}`, { cache: 'no-store' })
       .then(d => {
         const paid = (d.channels ?? []).filter((c: any) => c.attribution === 'PAID_MEDIA');
         setPaidChannels(paid);
