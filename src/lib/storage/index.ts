@@ -15,6 +15,17 @@ const IS_VERCEL = !!process.env.VERCEL;
 const LOCAL_BASE = IS_VERCEL ? '/tmp' : process.cwd();
 type BlobAccessMode = 'public' | 'private';
 let resolvedBlobAccessMode: BlobAccessMode | null = null;
+const BLOB_VISIBILITY_RETRY_DELAYS_MS = [200, 400, 600, 800, 1000, 1200, 1600, 2000, 2400];
+const RECENT_BLOB_WRITE_TTL_MS = 30_000;
+
+interface RecentBlobJsonWrite {
+  access: BlobAccessMode;
+  expiresAt: number;
+  raw: string;
+  value: unknown;
+}
+
+const recentBlobJsonWrites = new Map<string, RecentBlobJsonWrite>();
 
 export interface StorageStatus {
   hasBlob: boolean;
@@ -93,6 +104,84 @@ function rememberBlobAccessMode(access: BlobAccessMode): void {
   resolvedBlobAccessMode = access;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function rememberRecentBlobJsonWrite(
+  key: string,
+  access: BlobAccessMode,
+  raw: string,
+  value: unknown,
+): void {
+  recentBlobJsonWrites.set(key, {
+    access,
+    expiresAt: Date.now() + RECENT_BLOB_WRITE_TTL_MS,
+    raw,
+    value,
+  });
+}
+
+function getRecentBlobJsonWrite<T>(key: string): T | null {
+  const cached = recentBlobJsonWrites.get(key);
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    recentBlobJsonWrites.delete(key);
+    return null;
+  }
+
+  return cached.value as T;
+}
+
+function clearRecentBlobJsonWrite(key: string): void {
+  recentBlobJsonWrites.delete(key);
+}
+
+async function readBlobJsonRaw(key: string, access: BlobAccessMode): Promise<string | null> {
+  const { get } = await import('@vercel/blob');
+  const result = await get(`${key}.json`, { access });
+  if (!result) {
+    return null;
+  }
+
+  return await new Response(result.stream).text();
+}
+
+async function waitForBlobJsonVisibility(
+  key: string,
+  raw: string,
+  access: BlobAccessMode,
+): Promise<void> {
+  let lastError: unknown = null;
+
+  for (const delayMs of [0, ...BLOB_VISIBILITY_RETRY_DELAYS_MS]) {
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+
+    try {
+      const visibleRaw = await readBlobJsonRaw(key, access);
+      if (visibleRaw === raw) {
+        return;
+      }
+
+      lastError = new Error(
+        visibleRaw === null
+          ? 'objeto ainda nao visivel'
+          : 'objeto visivel com conteudo desatualizado',
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const detail = lastError ? getErrorMessage(lastError) : 'sem detalhe adicional';
+  throw new Error(`Blob ainda nao confirmou a gravacao de ${key}.json. ${detail}`);
+}
+
 /* KV */
 
 export async function kvGet<T>(key: string): Promise<T | null> {
@@ -158,23 +247,17 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
   if (IS_BLOB) {
     let blobError: unknown = null;
     try {
-      const { get } = await import('@vercel/blob');
-      const pathname = `${key}.json`;
-
       for (const access of buildBlobAccessOrder('private')) {
         try {
-          const result = await get(pathname, { access });
-          if (!result) {
+          const payload = await readBlobJsonRaw(key, access);
+          if (!payload) {
             continue;
           }
 
-          const payload = await new Response(result.stream).text();
-          if (!payload) {
-            return null;
-          }
-
+          const parsed = JSON.parse(payload) as T;
           rememberBlobAccessMode(access);
-          return JSON.parse(payload) as T;
+          rememberRecentBlobJsonWrite(key, access, payload, parsed);
+          return parsed;
         } catch (error) {
           blobError = error;
         }
@@ -186,6 +269,11 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
     if (blobError) {
       console.error(`[storage] blobGetJson(${key}) blob failed, falling back to KV:`, blobError);
     }
+  }
+
+  const recentWrite = getRecentBlobJsonWrite<T>(key);
+  if (recentWrite) {
+    return recentWrite;
   }
 
   if (IS_KV) {
@@ -237,6 +325,8 @@ export async function blobSetJson(
             contentType: 'application/json',
           } as Parameters<typeof put>[2]);
           rememberBlobAccessMode(candidateAccess);
+          rememberRecentBlobJsonWrite(key, candidateAccess, payload, value);
+          await waitForBlobJsonVisibility(key, payload, candidateAccess);
           return;
         } catch (error) {
           blobFailure = error;
@@ -268,6 +358,7 @@ export async function blobSetJson(
 }
 
 export async function blobDel(key: string): Promise<void> {
+  clearRecentBlobJsonWrite(key);
   if (IS_BLOB) {
     try {
       const { del } = await import('@vercel/blob');
