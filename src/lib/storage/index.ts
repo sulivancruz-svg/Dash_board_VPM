@@ -90,7 +90,7 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
   }
   // On Vercel without KV: use Blob as persistent fallback (avoids ephemeral /tmp)
   if (IS_BLOB) {
-    await blobSetJson(key, value, 'public');
+    await blobSetJson(key, value, 'private');
     return;
   }
   if (shouldBlockEphemeralPersistence()) {
