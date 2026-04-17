@@ -11,7 +11,6 @@ import path from 'path';
 
 const IS_KV = !!process.env.KV_REST_API_URL;
 const IS_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
-// Em produção Vercel sem KV/Blob, o filesystem raiz é read-only — usa /tmp como fallback
 const IS_VERCEL = !!process.env.VERCEL;
 const LOCAL_BASE = IS_VERCEL ? '/tmp' : process.cwd();
 
@@ -51,16 +50,29 @@ function getEphemeralStorageError(operation: string): Error {
 function warnEphemeralRead(operation: string, key: string): void {
   console.error(`[storage] ${operation}(${key}) sem Blob/KV na Vercel; ignorando fallback efemero`);
 }
+
 function localFilePath(key: string): string {
   return path.join(LOCAL_BASE, `.${key}.json`);
 }
+
 function localBlobPath(key: string): string {
   return path.join(LOCAL_BASE, `${key}.json`);
 }
 
-/* ─────────────────────────────────────────── KV ─── */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
 
-/** Read a JSON value from KV (prod) or a local .json file (dev). */
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+/* KV */
+
 export async function kvGet<T>(key: string): Promise<T | null> {
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
@@ -84,7 +96,6 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   return null;
 }
 
-/** Write a JSON value to KV (prod) or a local .json file (dev). */
 export async function kvSet(key: string, value: unknown): Promise<void> {
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
@@ -101,7 +112,6 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
 
-/** Delete a key from KV (prod) or delete the local .json file (dev). */
 export async function kvDel(key: string): Promise<void> {
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
@@ -115,39 +125,37 @@ export async function kvDel(key: string): Promise<void> {
     throw new Error(`kvDel(${key}) falhou sem fallback local disponivel na Vercel.`);
   }
   const file = localFilePath(key);
-  if (fs.existsSync(file)) fs.unlinkSync(file);
+  if (fs.existsSync(file)) {
+    fs.unlinkSync(file);
+  }
 }
 
-/* ─────────────────────────────────────────── Blob ─── */
+/* Blob */
 
-/**
- * Read a large JSON blob (prod: Vercel Blob, dev: local file).
- * Key maps to filename WITHOUT extension (e.g. 'pipedrive-data').
- */
 export async function blobGetJson<T>(key: string): Promise<T | null> {
   if (IS_BLOB) {
     try {
-      const { list, get } = await import('@vercel/blob');
+      const { list } = await import('@vercel/blob');
       const result = await list({ prefix: `${key}.json`, limit: 1 });
       const blobs = result?.blobs ?? [];
       if (blobs.length > 0) {
         const blobUrl = blobs[0].url;
-        // Public blob: fetch directly
         let res = await fetch(blobUrl, { cache: 'no-store' });
-        // Private/legacy blob: try with Bearer token
         if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
           res = await fetch(blobUrl, {
             cache: 'no-store',
             headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
           });
         }
-        if (res.ok) return (await res.json()) as T;
+        if (res.ok) {
+          return (await res.json()) as T;
+        }
       }
     } catch (e) {
       console.error(`[storage] blobGetJson(${key}) blob failed, falling back to KV:`, e);
     }
   }
-  // KV fallback
+
   if (IS_KV) {
     try {
       const { kv } = await import('@vercel/kv');
@@ -156,6 +164,7 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
       console.error(`[storage] blobGetJson(${key}) KV error:`, e);
     }
   }
+
   if (shouldBlockEphemeralPersistence()) {
     warnEphemeralRead('blobGetJson', key);
     return null;
@@ -174,44 +183,62 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
   return null;
 }
 
-/** Write a large JSON blob (prod: Vercel Blob with KV fallback, dev: local file). */
-export async function blobSetJson(key: string, value: unknown, access: 'public' | 'private' = 'public'): Promise<void> {
+export async function blobSetJson(
+  key: string,
+  value: unknown,
+  access: 'public' | 'private' = 'public',
+): Promise<void> {
+  let blobFailure: unknown = null;
+
   if (IS_BLOB) {
     try {
       const { put, list, del } = await import('@vercel/blob');
-      // Delete old blob first — allowOverwrite requires same access type, so delete to allow type change
-      try {
-        const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
-        if (blobs.length > 0) await del(blobs.map((b) => b.url));
-      } catch { /* ignore delete errors */ }
-      await put(`${key}.json`, JSON.stringify(value), {
+      const payload = JSON.stringify(value);
+      const options = {
         access,
         addRandomSuffix: false,
         allowOverwrite: true,
         contentType: 'application/json',
-      } as Parameters<typeof put>[2]);
+      } as Parameters<typeof put>[2];
+
+      try {
+        await put(`${key}.json`, payload, options);
+        return;
+      } catch (initialError) {
+        blobFailure = initialError;
+      }
+
+      const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
+      if (blobs.length > 0) {
+        await del(blobs.map((b) => b.url));
+      }
+
+      await put(`${key}.json`, payload, options);
       return;
     } catch (e) {
+      blobFailure = e;
       console.error(`[storage] blobSetJson(${key}) blob failed, falling back to KV:`, e);
     }
   }
-  // KV fallback (production without Blob or when Blob fails)
+
   if (IS_KV) {
     const { kv } = await import('@vercel/kv');
     await kv.set(key, value);
     return;
   }
+
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`blobSetJson(${key})`);
   }
   if (!shouldUseLocalFallback()) {
-    throw new Error(`blobSetJson(${key}) falhou sem fallback local disponivel na Vercel.`);
+    const detail = blobFailure ? ` Detalhe do Blob: ${getErrorMessage(blobFailure)}` : '';
+    throw new Error(`blobSetJson(${key}) falhou sem fallback local disponivel na Vercel.${detail}`);
   }
+
   const file = localBlobPath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
 
-/** Delete a blob (prod: Vercel Blob with KV fallback, dev: local file). */
 export async function blobDel(key: string): Promise<void> {
   if (IS_BLOB) {
     try {
@@ -228,7 +255,9 @@ export async function blobDel(key: string): Promise<void> {
     try {
       const { kv } = await import('@vercel/kv');
       await kv.del(key);
-    } catch { /* ignore */ }
+    } catch {
+      // ignore
+    }
     return;
   }
   if (shouldBlockEphemeralPersistence()) {
@@ -238,13 +267,11 @@ export async function blobDel(key: string): Promise<void> {
     throw new Error(`blobDel(${key}) falhou sem fallback local disponivel na Vercel.`);
   }
   const file = localBlobPath(key);
-  if (fs.existsSync(file)) fs.unlinkSync(file);
+  if (fs.existsSync(file)) {
+    fs.unlinkSync(file);
+  }
 }
 
-/**
- * Upload a binary file to Blob storage (prod: Vercel Blob, dev: local filesystem).
- * Returns the stored URL (prod) or relative path (dev).
- */
 export async function blobUploadFile(
   blobPath: string,
   buffer: Buffer,
@@ -267,7 +294,6 @@ export async function blobUploadFile(
   if (!shouldUseLocalFallback()) {
     throw new Error(`blobUploadFile(${blobPath}) falhou sem fallback local disponivel na Vercel.`);
   }
-  // Fallback: write to /tmp on Vercel (ephemeral) or local filesystem in dev
   const localPath = blobPath.startsWith('branding-assets/')
     ? path.join(process.cwd(), 'public', blobPath)
     : path.join(process.cwd(), 'historical-imports', blobPath.replace('historical-imports/', ''));
@@ -276,7 +302,6 @@ export async function blobUploadFile(
   return `/${blobPath}`;
 }
 
-/** Delete a file from Blob storage (prod) or filesystem (dev). */
 export async function blobDeleteFile(urlOrPath: string): Promise<void> {
   if (IS_BLOB) {
     if (urlOrPath.startsWith('https://')) {
@@ -291,7 +316,6 @@ export async function blobDeleteFile(urlOrPath: string): Promise<void> {
   if (!shouldUseLocalFallback()) {
     throw new Error(`blobDeleteFile(${urlOrPath}) falhou sem fallback local disponivel na Vercel.`);
   }
-  // Local: resolve absolute path
   let localPath: string;
   if (urlOrPath.startsWith('/branding-assets/')) {
     localPath = path.join(process.cwd(), 'public', urlOrPath.replace(/^\//, ''));
@@ -300,5 +324,7 @@ export async function blobDeleteFile(urlOrPath: string): Promise<void> {
   } else {
     return;
   }
-  if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+  if (fs.existsSync(localPath)) {
+    fs.unlinkSync(localPath);
+  }
 }
