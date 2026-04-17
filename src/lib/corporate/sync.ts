@@ -33,6 +33,39 @@ function classifyProfile(leadTimeDays: number): string {
   return 'Planejado';
 }
 
+// Helper function to parse CSV line respecting quoted fields (RFC 4180)
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        // Escaped quote (two quotes in a row)
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote state
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === ',' && !insideQuotes) {
+      // Comma outside quotes = field separator
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // Add final field
+  result.push(current.trim());
+  return result;
+}
+
 export async function fetchAndSyncCorporateSales(): Promise<{
   imported: number;
   updated: number;
@@ -46,13 +79,21 @@ export async function fetchAndSyncCorporateSales(): Promise<{
 
     const csv = await res.text();
     const lines = csv.split('\n').filter(l => l.trim());
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headerLine = parseCSVLine(lines[0]);
+    const headers = headerLine.map(h => h.replace(/^"|"$/g, '').trim()); // Remove surrounding quotes
 
     const sales: Omit<CorporateSale, 'id' | 'createdAt' | 'updatedAt'>[] = [];
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const values = parseCSVLine(lines[i]);
       const row: Record<string, string> = {};
-      headers.forEach((h, idx) => (row[h] = values[idx] || ''));
+      headers.forEach((h, idx) => {
+        // Remove surrounding quotes from values if present
+        let value = values[idx] || '';
+        if (value.startsWith('"') && value.endsWith('"')) {
+          value = value.slice(1, -1);
+        }
+        row[h] = value.trim();
+      });
 
       const saleDate = parseBrDate(row['Data Venda']);
       const startDate = parseBrDate(row['Data Início']);
