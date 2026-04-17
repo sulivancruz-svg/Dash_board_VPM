@@ -635,6 +635,9 @@ export default function IntelligencePage() {
         <>
           <ChannelRankingSection    channels={data.channelRanking} />
           <TemporalSection          channels={data.temporalByChannel} allMonthKeys={data.allMonthKeys} />
+          <GoogleProjectionSection  proj={data.googleProjection} />
+          <EfficiencySection        scores={data.efficiencyScores} />
+          <AnomalySection           anomalies={data.anomalies} />
         </>
       )}
     </div>

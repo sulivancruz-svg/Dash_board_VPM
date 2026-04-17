@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPipedriveData, getSdrData } from '@/lib/data-store';
-import { blobGetJson } from '@/lib/storage';
+import { getSdrData } from '@/lib/data-store';
 import { attributeChannel } from '@/lib/channel-mapping';
 import type { GoogleAdsStoredData } from '@/lib/google-ads-store';
 import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
 import type { DateRange } from '@/lib/date-range';
+import { loadGoogleAdsDashboardData, loadPipedriveDashboardData } from '@/lib/dashboard-snapshots';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -168,10 +168,14 @@ export async function GET(req: NextRequest) {
       return true;
     };
 
+    const periodDays = start && end
+      ? Math.max(1, Math.ceil((new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000) + 1)
+      : 30;
+
     const [pipedriveData, sdrData, googleAdsData] = await Promise.all([
-      getPipedriveData(),
+      loadPipedriveDashboardData(),
       getSdrData(),
-      blobGetJson<GoogleAdsStoredData>('google-ads-data'),
+      loadGoogleAdsDashboardData(start || '', end || '', periodDays) as Promise<GoogleAdsStoredData | null>,
     ]);
 
     const empty: IntelligenceData = {

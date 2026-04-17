@@ -9,6 +9,7 @@ import {
 } from '@/lib/channel-mapping';
 import { buildPtBrDateLabel, resolveDateRange } from '@/lib/date-range';
 import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
+import { loadPipedriveDashboardData } from '@/lib/dashboard-snapshots';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     const sourceControls = await getSourceControls();
     const sdrData = sourceControls.sdrEnabled ? await getSdrData() : null;
-    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
+    const pipedriveData = sourceControls.pipedriveEnabled ? await loadPipedriveDashboardData() : null;
     const pipedriveMetrics = getPipedriveMetricsForRange(pipedriveData, range || undefined);
 
     if (!sdrData && !pipedriveData) {
@@ -145,6 +146,7 @@ export async function GET(req: NextRequest) {
       summary: {
         totalReceita,
         totalVendas,
+        totalCohortConverted: pipedriveMetrics?.totalCohortConverted || 0,
         totalLeads: pipedriveMetrics?.totalLeads || sdrData?.totalLeads || totalLeads,
         totalLost: pipedriveMetrics?.totalLost || 0,
         totalQualified: sdrData?.totalQualified || 0,
