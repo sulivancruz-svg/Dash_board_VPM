@@ -32,7 +32,8 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                aria-label={item.label}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition focus:outline-2 focus:outline-blue-500 ${
                   isActive
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-800'
