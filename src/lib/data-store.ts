@@ -58,7 +58,7 @@ export interface PipedriveStore {
 /* ── SDR (small → KV) ─────────────────────────────── */
 
 export async function setSdrData(data: SdrStore): Promise<void> {
-  await blobSetJson('sdr-data', data);
+  await blobSetJson('sdr-data', data, 'private');
 }
 
 export async function getSdrData(): Promise<SdrStore | null> {
@@ -68,7 +68,7 @@ export async function getSdrData(): Promise<SdrStore | null> {
 /* ── Pipedrive Monde (large → Blob) ───────────────── */
 
 export async function setPipedriveData(data: PipedriveStore): Promise<void> {
-  await blobSetJson('pipedrive-data', data);
+  await blobSetJson('pipedrive-data', data, 'private');
 }
 
 export async function getPipedriveData(): Promise<PipedriveStore | null> {

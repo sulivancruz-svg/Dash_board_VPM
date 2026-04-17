@@ -32,6 +32,6 @@ export async function setSourceControls(
 ): Promise<SourceControls> {
   const current = await getSourceControls();
   const merged: SourceControls = { ...current, ...nextControls };
-  await blobSetJson('source-controls', merged);
+  await blobSetJson('source-controls', merged, 'private');
   return merged;
 }

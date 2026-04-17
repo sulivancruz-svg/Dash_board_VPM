@@ -45,7 +45,7 @@ export async function getCorporateSalesData(): Promise<CorporateSalesData | null
 }
 
 export async function setCorporateSalesData(data: CorporateSalesData): Promise<void> {
-  await blobSetJson(DATA_KEY, data);
+  await blobSetJson(DATA_KEY, data, 'private');
 }
 
 export async function clearCorporateSalesData(): Promise<void> {
@@ -65,7 +65,7 @@ export async function appendCorporateSalesSnapshot(snapshot: CorporateSalesSnaps
   // Keep last 365 days
   const sorted = filtered.sort((a, b) => a.date.localeCompare(b.date));
   const trimmed = sorted.slice(-365);
-  await blobSetJson(HISTORY_KEY, trimmed);
+  await blobSetJson(HISTORY_KEY, trimmed, 'private');
 }
 
 /**

@@ -33,7 +33,7 @@ async function readStore(): Promise<HistoricalImportsStore> {
 }
 
 async function writeStore(store: HistoricalImportsStore): Promise<void> {
-  await blobSetJson('historical-imports', store);
+  await blobSetJson('historical-imports', store, 'private');
 }
 
 export async function listHistoricalImportBatches(): Promise<HistoricalImportBatch[]> {

@@ -117,7 +117,7 @@ export async function setPipedriveDirectCredentials(input: {
     connectedAt: now,
     lastValidatedAt: now,
   };
-  await blobSetJson('pipedrive-direct-config', payload);
+  await blobSetJson('pipedrive-direct-config', payload, 'private');
 }
 
 export async function clearPipedriveDirectCredentials(): Promise<void> {
@@ -136,7 +136,7 @@ export async function getPipedriveDirectData(): Promise<PipedriveDirectData | nu
 
 export async function setPipedriveDirectData(data: PipedriveDirectData): Promise<void> {
   console.log('[pipedrive-direct] Saving data:', data.totalDeals, 'deals, updated:', data.updatedAt);
-  await blobSetJson('pipedrive-direct-data', data);
+  await blobSetJson('pipedrive-direct-data', data, 'private');
   console.log('[pipedrive-direct] Data saved successfully');
 }
 

@@ -223,7 +223,7 @@ function buildChannelBreakdown(campaigns: GoogleAdsCampaign[]) {
 }
 
 export async function setGoogleAdsStoredData(data: GoogleAdsStoredData): Promise<void> {
-  await blobSetJson('google-ads-data', data);
+  await blobSetJson('google-ads-data', data, 'private');
 }
 
 export async function clearGoogleAdsStoredData(): Promise<void> {
