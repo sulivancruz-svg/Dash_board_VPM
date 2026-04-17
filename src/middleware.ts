@@ -13,10 +13,8 @@ export default withAuth(
 );
 
 export const config = {
-  // Protege todas as rotas exceto login, assets estáticos e cron público.
-  // `api/corporate/sync` fica fora porque é chamado pelo Vercel Cron sem sessão
-  // (a autorização é feita no próprio handler via header Authorization Bearer).
+  // Protege todas as rotas exceto login e assets estáticos
   matcher: [
-    '/((?!login|api/auth|api/corporate/sync|_next/static|_next/image|favicon.ico|branding-assets).*)',
+    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|branding-assets).*)',
   ],
 };
