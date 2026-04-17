@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { DataTable } from '@/components/corporate/DataTable';
 
-interface ClientData {
+interface ClientData extends Record<string, unknown> {
   id: string;
   name: string;
   revenue: number;

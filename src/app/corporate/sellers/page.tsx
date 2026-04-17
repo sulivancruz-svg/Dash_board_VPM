@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { DataTable } from '@/components/corporate/DataTable';
 import { BarChartCorp } from '@/components/corporate/BarChartCorp';
 
-interface SellerData {
+interface SellerData extends Record<string, unknown> {
   id: string;
   name: string;
   revenue: number;

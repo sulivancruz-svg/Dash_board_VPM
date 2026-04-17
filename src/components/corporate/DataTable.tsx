@@ -6,18 +6,18 @@ interface Column {
   format?: 'currency' | 'date' | 'text';
 }
 
-interface DataTableProps {
+interface DataTableProps<T extends Record<string, unknown>> {
   columns: Column[];
-  data: Record<string, string | number | Date>[];
+  data: T[];
   onPageChange?: (page: number) => void;
   currentPage?: number;
   totalPages?: number;
 }
 
-export function DataTable({ columns, data, onPageChange, currentPage = 1, totalPages = 1 }: DataTableProps) {
-  const formatValue = (value: string | number | Date, format?: string) => {
+export function DataTable<T extends Record<string, unknown>>({ columns, data, onPageChange, currentPage = 1, totalPages = 1 }: DataTableProps<T>) {
+  const formatValue = (value: unknown, format?: string) => {
     if (format === 'currency') return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    if (format === 'date') return new Date(value).toLocaleDateString('pt-BR');
+    if (format === 'date') return new Date(String(value)).toLocaleDateString('pt-BR');
     return String(value);
   };
 
