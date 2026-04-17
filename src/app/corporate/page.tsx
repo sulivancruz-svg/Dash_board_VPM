@@ -17,7 +17,7 @@ interface OverviewData {
   };
   monthlyTrend: Array<{ month: string; revenue: number; billing: number }>;
   topSellers: Array<{ name: string; revenue: number; sales: number; avgTicket: number }>;
-  topClients: Array<{ name: string; revenue: number; sales: number; avgTicket: number }>;
+  topClients: Array<{ id: string; name: string; revenue: number; sales: number; avgTicket: number }>;
   products: Array<{ name: string; revenue: number; count: number; pct: number }>;
   profiles: Array<{ profile: string; revenue: number }>;
 }
@@ -25,25 +25,52 @@ interface OverviewData {
 export default function OverviewPage() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/corporate/overview');
+        const res = await fetch('/api/corporate/overview', {
+          signal: abortController.signal,
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
         const json = await res.json();
         setData(json);
+        setError(null);
       } catch (error) {
-        console.error('Failed to load overview:', error);
+        if (error instanceof Error && error.name !== 'AbortError') {
+          const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+          setError(`Falha ao carregar dados: ${errorMsg}`);
+          console.error('Failed to load overview:', error);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
+    return () => abortController.abort();
   }, []);
 
-  if (loading) return <div className="text-center py-12">Carregando...</div>;
-  if (!data) return <div className="text-center py-12 text-red-600">Erro ao carregar dados</div>;
+  if (loading) {
+    return (
+      <div className="text-center py-12" role="status" aria-live="polite" aria-label="Carregando dados">
+        Carregando...
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="text-center py-12 text-red-600" role="alert" aria-live="assertive">
+        {error || 'Erro ao carregar dados'}
+      </div>
+    );
+  }
 
   const { metrics, monthlyTrend, topSellers, topClients, products, profiles } = data;
 
@@ -52,7 +79,9 @@ export default function OverviewPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Visão Geral Corporativa</h1>
+          <h1 className="text-3xl font-bold text-gray-900" id="page-title">
+            Visão Geral Corporativa
+          </h1>
           <p className="text-gray-600 mt-2">Análise de vendas em tempo real</p>
         </div>
         <SyncButton />
@@ -104,10 +133,15 @@ export default function OverviewPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Perfil de Antecedência</h2>
           <div className="space-y-3">
-            {profiles.map(p => (
-              <div key={p.profile} className="flex justify-between items-center">
+            {profiles.map((p, idx) => (
+              <div key={`${p.profile}-${idx}`} className="flex justify-between items-center">
                 <span className="text-gray-700">{p.profile}</span>
-                <span className="font-semibold">R$ {p.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                <span className="font-semibold">
+                  R$ {p.revenue.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </span>
               </div>
             ))}
           </div>
