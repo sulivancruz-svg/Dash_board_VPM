@@ -35,6 +35,8 @@ interface ChannelRow {
 interface ChannelsData {
   hasData: boolean;
   updatedAt: string | null;
+  periodoMonde?: string;
+  usedAvailableRangeFallback?: boolean;
   summary: {
     totalReceita: number;
     totalVendas: number;
@@ -128,7 +130,7 @@ export default function ChannelsPage() {
 
   useEffect(() => {
     const params = new URLSearchParams({
-      period: activePeriod === 'custom' ? '30' : activePeriod,
+      period: activePeriod,
       start: dateRange.start,
       end: dateRange.end,
     });
@@ -160,7 +162,7 @@ export default function ChannelsPage() {
 
   useEffect(() => {
     const params = new URLSearchParams({
-      period: activePeriod === 'custom' ? '30' : activePeriod,
+      period: activePeriod,
       start: dateRange.start,
       end: dateRange.end,
     });
@@ -193,6 +195,7 @@ export default function ChannelsPage() {
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">Resultados Comerciais</p>
           <h1 className="text-2xl font-bold text-slate-900">Canais & Faturamento</h1>
           {updatedAt && <p className="mt-0.5 text-xs text-slate-400">Atualizado em {updatedAt}</p>}
+          {data?.periodoMonde && <p className="mt-0.5 text-xs text-slate-400">Monde: {data.periodoMonde}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateRangeFilter
@@ -210,6 +213,12 @@ export default function ChannelsPage() {
           </Link>
         </div>
       </div>
+
+      {data?.usedAvailableRangeFallback && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          O período selecionado não tinha dados suficientes do Pipe/Monde. A aba está exibindo automaticamente o intervalo disponível salvo no backend.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

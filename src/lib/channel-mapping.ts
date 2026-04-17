@@ -37,8 +37,38 @@ export const ATTRIBUTION_COLORS: Record<ChannelAttribution, { badge: string; car
 export function attributeChannel(rawCanal: string): ChannelAttribution {
   if (!rawCanal) return 'UNKNOWN';
 
+  const normalizedChannel = normalizeChannel(rawCanal);
+  const normalizedType = getChannelType(normalizedChannel);
+
+  if (
+    normalizedChannel === 'Google Ads'
+    || normalizedChannel === 'Meta - Instagram'
+    || normalizedChannel === 'Meta - Facebook'
+    || normalizedChannel === 'Meta Ads'
+    || normalizedChannel === 'Campanha Chile'
+    || normalizedChannel === 'Direto / Site'
+    || normalizedType === 'PAID_SEARCH'
+    || normalizedType === 'PAID_SOCIAL'
+  ) return 'PAID_MEDIA';
+
+  if (
+    normalizedChannel === 'Indicação'
+    || normalizedChannel === 'Parceiros'
+    || normalizedChannel === 'Networking'
+    || normalizedChannel === 'Prospecção Ativa'
+  ) return 'ORGANIC_COMMERCIAL';
+
+  if (
+    normalizedChannel === 'Clientes VPM - Retorno'
+    || normalizedChannel === 'Email Marketing'
+    || normalizedChannel === 'WhatsApp'
+    || normalizedChannel === 'Pós-Viagem'
+    || normalizedChannel === 'Orgânico'
+    || normalizedType === 'EMAIL'
+  ) return 'BRAND_BASE';
+
   // Mídia paga: Google, Redes Sociais / Facebook / Instagram / Meta Ads / Site
-  if (/google|redes\s?sociais|facebook|instagram|meta\s*ads|site\b/i.test(rawCanal)) return 'PAID_MEDIA';
+  if (/google|redes\s?sociais|facebook|instagram|meta\s*ads|site\b|tr[aá]fego\s*pago|m[ií]dia\s*paga|an[uú]ncio|ads\b|campanha/i.test(rawCanal)) return 'PAID_MEDIA';
 
   // Orgânico Comercial: Indicação, Networking, Prospecção por Agente
   if (/indica[çc][aã]o|indicado|networking|relacionamento|prospec[çc][aã]o|agente/i.test(rawCanal)) return 'ORGANIC_COMMERCIAL';

@@ -3,6 +3,12 @@ export interface DateRange {
   end: string;
 }
 
+export interface ResolvedDashboardRange {
+  range?: DateRange & { periodDays: number };
+  periodDays: number | null;
+  isAllTime: boolean;
+}
+
 export function formatIsoDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -55,6 +61,33 @@ export function resolveDateRange(
     start: formatIsoDate(startDate),
     end: formatIsoDate(endDate),
     periodDays,
+  };
+}
+
+export function resolveDashboardRange(
+  startParam: string | null,
+  endParam: string | null,
+  periodParam: string | null,
+  fallbackDays = 30,
+): ResolvedDashboardRange {
+  if (periodParam === 'all') {
+    return {
+      range: undefined,
+      periodDays: null,
+      isAllTime: true,
+    };
+  }
+
+  const parsedPeriod = Number.parseInt(periodParam || '', 10);
+  const effectiveFallback = Number.isFinite(parsedPeriod) && parsedPeriod > 0
+    ? parsedPeriod
+    : fallbackDays;
+  const range = resolveDateRange(startParam, endParam, effectiveFallback);
+
+  return {
+    range,
+    periodDays: range.periodDays,
+    isAllTime: false,
   };
 }
 

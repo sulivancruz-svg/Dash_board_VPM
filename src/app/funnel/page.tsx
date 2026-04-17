@@ -77,6 +77,7 @@ interface MonthRow {
 interface ChannelsData {
   hasData: boolean;
   periodoMonde?: string;
+  usedAvailableRangeFallback?: boolean;
   sources?: {
     sdrEnabled: boolean;
     pipedriveEnabled: boolean;
@@ -131,7 +132,7 @@ export default function FunnelPage() {
 
   useEffect(() => {
     const params = new URLSearchParams({
-      period: activePeriod === 'custom' ? '30' : activePeriod,
+      period: activePeriod,
       start: dateRange.start,
       end: dateRange.end,
     });
@@ -208,6 +209,12 @@ export default function FunnelPage() {
           </Link>
         </div>
       </div>
+
+      {data?.usedAvailableRangeFallback && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          O período selecionado não tinha dados suficientes do Pipe/Monde. O funil está exibindo automaticamente o intervalo disponível salvo no backend.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

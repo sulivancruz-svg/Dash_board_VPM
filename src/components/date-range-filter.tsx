@@ -16,6 +16,7 @@ const PRESET_PERIODS = [
   { label: '7 dias', value: '7' },
   { label: '14 dias', value: '14' },
   { label: '30 dias', value: '30' },
+  { label: 'Tudo', value: 'all' },
 ];
 
 export function DateRangeFilter({

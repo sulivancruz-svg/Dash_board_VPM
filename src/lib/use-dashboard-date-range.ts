@@ -35,7 +35,7 @@ function readStoredState(): DashboardDateRangeState {
 
     // Para presets (7/14/30 dias), recalcula as datas sempre com base em hoje
     // Evita datas stale quando o usuário retorna no dia seguinte
-    if (activePeriod !== 'custom') {
+    if (activePeriod !== 'custom' && activePeriod !== 'all') {
       return {
         activePeriod,
         dateRange: getPresetDateRange(Number.parseInt(activePeriod, 10)),
@@ -100,7 +100,9 @@ export function useDashboardDateRange() {
   const setPresetPeriod = (period: string) => {
     const nextState: DashboardDateRangeState = {
       activePeriod: period,
-      dateRange: getPresetDateRange(Number.parseInt(period, 10)),
+      dateRange: period === 'all'
+        ? state.dateRange
+        : getPresetDateRange(Number.parseInt(period, 10)),
     };
     setState(nextState);
     persistState(nextState);

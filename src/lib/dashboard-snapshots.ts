@@ -5,6 +5,23 @@ import { syncGoogleAdsDataSnapshot } from '@/lib/google-ads-sync';
 import { buildPipedriveDashboardStore } from '@/lib/pipedrive-dashboard-store';
 import { getPipedriveDirectCredentials, getPipedriveDirectData } from '@/lib/pipedrive-direct-store';
 import { syncPipedriveDirectSnapshot } from '@/lib/pipedrive-direct-sync';
+import { getPipedriveMetricsForRange, type PipedriveMetrics } from '@/lib/pipedrive-metrics';
+import type { DateRange } from '@/lib/date-range';
+
+function hasPipedriveMetricsData(metrics: PipedriveMetrics | null | undefined): boolean {
+  if (!metrics) {
+    return false;
+  }
+
+  return (
+    metrics.totalDeals > 0
+    || metrics.totalLeads > 0
+    || metrics.totalRevenue > 0
+    || metrics.channels.length > 0
+    || metrics.mondeDeals.length > 0
+    || metrics.pipelineDeals.length > 0
+  );
+}
 
 export async function loadGoogleAdsDashboardData(
   start: string,
@@ -68,4 +85,31 @@ export async function loadPipedriveDashboardData() {
   }
 
   return pipedriveData;
+}
+
+export async function loadPipedriveDashboardMetrics(range?: DateRange) {
+  const pipedriveData = await loadPipedriveDashboardData();
+  if (!pipedriveData) {
+    return {
+      pipedriveData: null,
+      pipedriveMetrics: null,
+      usedAvailableRangeFallback: false,
+    };
+  }
+
+  const requestedMetrics = getPipedriveMetricsForRange(pipedriveData, range);
+  if (!range || hasPipedriveMetricsData(requestedMetrics)) {
+    return {
+      pipedriveData,
+      pipedriveMetrics: requestedMetrics,
+      usedAvailableRangeFallback: false,
+    };
+  }
+
+  const allTimeMetrics = getPipedriveMetricsForRange(pipedriveData);
+  return {
+    pipedriveData,
+    pipedriveMetrics: allTimeMetrics,
+    usedAvailableRangeFallback: hasPipedriveMetricsData(allTimeMetrics),
+  };
 }
