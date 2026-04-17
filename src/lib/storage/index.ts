@@ -14,6 +14,39 @@ const IS_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 // Em produção Vercel sem KV/Blob, o filesystem raiz é read-only — usa /tmp como fallback
 const IS_VERCEL = !!process.env.VERCEL;
 const LOCAL_BASE = IS_VERCEL ? '/tmp' : process.cwd();
+
+export interface StorageStatus {
+  hasBlob: boolean;
+  hasKv: boolean;
+  hasPersistentStorage: boolean;
+  mode: 'persistent' | 'ephemeral';
+  runtime: 'vercel' | 'local';
+}
+
+export function getStorageStatus(): StorageStatus {
+  const hasPersistentStorage = IS_BLOB || IS_KV;
+  return {
+    hasBlob: IS_BLOB,
+    hasKv: IS_KV,
+    hasPersistentStorage,
+    mode: IS_VERCEL && !hasPersistentStorage ? 'ephemeral' : 'persistent',
+    runtime: IS_VERCEL ? 'vercel' : 'local',
+  };
+}
+
+function shouldBlockEphemeralPersistence(): boolean {
+  return IS_VERCEL && !IS_BLOB && !IS_KV;
+}
+
+function getEphemeralStorageError(operation: string): Error {
+  return new Error(
+    `${operation} requer storage persistente na Vercel. Conecte Vercel Blob ou KV; o fallback local nao mantem tokens entre execucoes.`,
+  );
+}
+
+function warnEphemeralRead(operation: string, key: string): void {
+  console.error(`[storage] ${operation}(${key}) sem Blob/KV na Vercel; ignorando fallback efemero`);
+}
 function localFilePath(key: string): string {
   return path.join(LOCAL_BASE, `.${key}.json`);
 }
@@ -32,6 +65,10 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   // On Vercel without KV: use Blob as persistent fallback (avoids ephemeral /tmp)
   if (IS_BLOB) {
     return blobGetJson<T>(key);
+  }
+  if (shouldBlockEphemeralPersistence()) {
+    warnEphemeralRead('kvGet', key);
+    return null;
   }
   const file = localFilePath(key);
   try {
@@ -56,6 +93,9 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
     await blobSetJson(key, value, 'public');
     return;
   }
+  if (shouldBlockEphemeralPersistence()) {
+    throw getEphemeralStorageError(`kvSet(${key})`);
+  }
   const file = localFilePath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
@@ -71,6 +111,9 @@ export async function kvDel(key: string): Promise<void> {
   if (IS_BLOB) {
     await blobDel(key);
     return;
+  }
+  if (shouldBlockEphemeralPersistence()) {
+    throw getEphemeralStorageError(`kvDel(${key})`);
   }
   const file = localFilePath(key);
   if (fs.existsSync(file)) fs.unlinkSync(file);
@@ -114,6 +157,10 @@ export async function blobGetJson<T>(key: string): Promise<T | null> {
       console.error(`[storage] blobGetJson(${key}) KV error:`, e);
     }
   }
+  if (shouldBlockEphemeralPersistence()) {
+    warnEphemeralRead('blobGetJson', key);
+    return null;
+  }
   const file = localBlobPath(key);
   try {
     if (fs.existsSync(file)) {
@@ -152,6 +199,9 @@ export async function blobSetJson(key: string, value: unknown, access: 'public' 
     await kv.set(key, value);
     return;
   }
+  if (shouldBlockEphemeralPersistence()) {
+    throw getEphemeralStorageError(`blobSetJson(${key})`);
+  }
   const file = localBlobPath(key);
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf-8');
 }
@@ -175,6 +225,9 @@ export async function blobDel(key: string): Promise<void> {
       await kv.del(key);
     } catch { /* ignore */ }
     return;
+  }
+  if (shouldBlockEphemeralPersistence()) {
+    throw getEphemeralStorageError(`blobDel(${key})`);
   }
   const file = localBlobPath(key);
   if (fs.existsSync(file)) fs.unlinkSync(file);
@@ -200,6 +253,9 @@ export async function blobUploadFile(
     } as Parameters<typeof put>[2]);
     return result.url;
   }
+  if (shouldBlockEphemeralPersistence()) {
+    throw getEphemeralStorageError(`blobUploadFile(${blobPath})`);
+  }
   // Fallback: write to /tmp on Vercel (ephemeral) or local filesystem in dev
   const localPath = IS_VERCEL
     ? path.join('/tmp', blobPath.replace(/\//g, '-'))
@@ -219,6 +275,9 @@ export async function blobDeleteFile(urlOrPath: string): Promise<void> {
       await del([urlOrPath]);
     }
     return;
+  }
+  if (shouldBlockEphemeralPersistence()) {
+    throw getEphemeralStorageError(`blobDeleteFile(${urlOrPath})`);
   }
   // Local: resolve absolute path
   let localPath: string;

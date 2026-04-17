@@ -22,7 +22,14 @@ cp .env.example .env.local
 Editar `.env.local`:
 - `ENCRYPTION_KEY`: Chave de 32 caracteres para criptografia do token Meta
   - Gerar com: `node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"`
+- `NEXTAUTH_SECRET`: Segredo estável para a sessão do login em produção
 - `DATABASE_URL`: String de conexão PostgreSQL
+
+### Vercel
+
+- Conecte **Vercel Blob** ou **Vercel KV** ao projeto para persistir tokens, credenciais e configurações.
+- Defina `NEXTAUTH_SECRET`, `ENCRYPTION_KEY` e `DASHBOARD_PASSWORD` como variáveis de ambiente estáveis.
+- Sem Blob/KV, a Vercel usa filesystem efêmero e os tokens podem sumir entre execuções.
 
 ### 2. Estender Schema Prisma
 

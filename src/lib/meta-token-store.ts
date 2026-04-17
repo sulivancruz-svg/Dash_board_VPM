@@ -41,7 +41,7 @@ export async function setMetaToken(
     accountName,
   };
   console.log('[meta-token] Saving token for account:', accountId);
-  await blobSetJson('meta-token', data);
+  await blobSetJson('meta-token', data, 'private');
   console.log('[meta-token] Token saved successfully');
 }
 

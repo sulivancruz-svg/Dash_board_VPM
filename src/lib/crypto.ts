@@ -1,13 +1,27 @@
 import crypto from 'crypto';
 
-function getEncryptionKey(): Buffer {
-  const encryptionKey = process.env.ENCRYPTION_KEY;
+function deriveKey(secret: string): Buffer {
+  return crypto.createHash('sha256').update(`dashboard-encryption:${secret}`, 'utf8').digest();
+}
 
-  if (!encryptionKey || encryptionKey.length !== 32) {
-    throw new Error('ENCRYPTION_KEY env var must be 32 chars (256-bit key for AES-256)');
+function getEncryptionKey(): Buffer {
+  const encryptionKey = process.env.ENCRYPTION_KEY?.trim();
+
+  if (encryptionKey) {
+    // Preserve compatibility with existing 32-char raw keys already in use.
+    if (encryptionKey.length === 32) {
+      return Buffer.from(encryptionKey, 'utf8');
+    }
+
+    return deriveKey(encryptionKey);
   }
 
-  return Buffer.from(encryptionKey);
+  const authSecret = process.env.NEXTAUTH_SECRET?.trim();
+  if (authSecret) {
+    return deriveKey(authSecret);
+  }
+
+  throw new Error('Configure ENCRYPTION_KEY ou NEXTAUTH_SECRET para criptografar tokens');
 }
 
 export interface EncryptedToken {
