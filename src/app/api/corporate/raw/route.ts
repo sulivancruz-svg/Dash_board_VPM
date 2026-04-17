@@ -32,8 +32,8 @@ export async function GET(req: Request) {
     if (product) where.product = product;
     if (startDate) where.saleDate = { gte: new Date(startDate) };
     if (endDate) {
-      if (where.saleDate) {
-        where.saleDate = { ...where.saleDate, lte: new Date(endDate) };
+      if (where.saleDate && typeof where.saleDate === 'object' && 'gte' in where.saleDate) {
+        where.saleDate = { ...(where.saleDate as { gte: Date }), lte: new Date(endDate) };
       } else {
         where.saleDate = { lte: new Date(endDate) };
       }
