@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader, Upload, ArrowRight, Info, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
-import { DateRangeFilter } from '@/components/date-range-filter';
+
 
 function fmt(n: number, type: 'currency' | 'number' | 'pct' = 'number'): string {
   if (type === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
@@ -191,12 +191,6 @@ export default function FunnelPage() {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <DateRangeFilter
-            activePeriod={activePeriod}
-            dateRange={dateRange}
-            onPresetSelect={setPresetPeriod}
-            onRangeChange={setCustomDateRange}
-          />
           <Link href="/settings"
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
             <Upload className="w-4 h-4" />

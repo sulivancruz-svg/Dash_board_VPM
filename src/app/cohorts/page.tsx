@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader, Upload } from 'lucide-react';
-import { DateRangeFilter } from '@/components/date-range-filter';
+
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 
 function fmt(value: number, type: 'currency' | 'number' | 'pct' = 'number'): string {
@@ -138,12 +138,6 @@ export default function CohortsPage() {
           {data?.periodLabel && <p className="mt-0.5 text-xs text-slate-400">Entradas analisadas: {data.periodLabel}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <DateRangeFilter
-            activePeriod={activePeriod}
-            dateRange={dateRange}
-            onPresetSelect={setPresetPeriod}
-            onRangeChange={setCustomDateRange}
-          />
           <Link
             href="/settings"
             className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"

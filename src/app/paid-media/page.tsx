@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
-import { DateRangeFilter } from '@/components/date-range-filter';
+
 
 function fmt(n: number, type: 'currency' | 'number' | 'pct' | 'decimal' = 'number'): string {
   if (type === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
@@ -555,15 +555,7 @@ export default function PaidMediaPage() {
           <h1 className="text-2xl font-bold text-slate-900">Midia Paga</h1>
           <p className="text-sm text-slate-400 mt-0.5">Meta Ads e Google Ads</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Período só aparece quando Meta está ativo */}
-          <DateRangeFilter
-            activePeriod={activePeriod}
-            dateRange={dateRange}
-            onPresetSelect={setPresetPeriod}
-            onRangeChange={setCustomDateRange}
-          />
-        </div>
+        <div className="flex items-center gap-2"></div>
       </div>
 
       {/* ── Receita por Canal Pago — Monde ── */}

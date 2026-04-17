@@ -16,7 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { DateRangeFilter } from '@/components/date-range-filter';
+
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 
 function fmt(value: number, type: 'number' | 'pct' | 'days' = 'number'): string {
@@ -306,12 +306,6 @@ export default function PipedriveDirectPage() {
             Visao operacional do pipeline comercial. Nao substitui o fechamento real do Pipe Monde.
           </p>
         </div>
-        <DateRangeFilter
-          activePeriod={activePeriod}
-          dateRange={dateRange}
-          onPresetSelect={setPresetPeriod}
-          onRangeChange={setCustomDateRange}
-        />
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">

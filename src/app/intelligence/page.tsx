@@ -9,7 +9,7 @@ import type {
   IntelligenceData, ChannelRanking, TemporalChannel,
   GoogleProjection, EfficiencyScore, AnomalyMetric,
 } from '@/app/api/data/intelligence/route';
-import { DateRangeFilter } from '@/components/date-range-filter';
+
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -591,12 +591,6 @@ export default function IntelligencePage() {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <DateRangeFilter
-            activePeriod={activePeriod}
-            dateRange={dateRange}
-            onPresetSelect={setPresetPeriod}
-            onRangeChange={setCustomDateRange}
-          />
           <button onClick={load} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
