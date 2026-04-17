@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CorporateSale {
+  id           String   @id @default(cuid())
+  saleNumber   String   @unique
+  saleDate     DateTime
+  seller       String
+  client       String
+  product      String // "Passagem Aérea", "Hospedagem", "Aluguel", "Seguro"
+  supplier     String
+  startDate    DateTime // trip start
+  endDate      DateTime // trip end
+  destination  String
+  personType   String // "J" (Juridical), "F" (Physical)
+  status       String // "Aberta", "Fechada"
+  revenue      Float // Receitas
+  billing      Float // Faturamento
+  leadTimeDays Int // days from saleDate to startDate
+  profile      String // "Urgente" (≤7d), "Normal" (≤30d), "Planejado" (>30d)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([saleDate])
+  @@index([seller])
+  @@index([client])
+  @@index([product])
+  @@index([profile])
+  @@index([leadTimeDays])
+}
+
+model CorporateSalesSnapshot {
+  id               String   @id @default(cuid())
+  snapshotDate     DateTime @default(now())
+  totalSales       Int
+  totalRevenue     Float
+  totalBilling     Float
+  avgTicket        Float
+  avgLeadTime      Int
+  topSellerName    String
+  topSellerRevenue Float
+  monthlyBreakdown Json // [{ month: "2026-04", revenue: X, billing: Y }, ...]
+  createdAt        DateTime @default(now())
+
+  @@index([snapshotDate])
+}
