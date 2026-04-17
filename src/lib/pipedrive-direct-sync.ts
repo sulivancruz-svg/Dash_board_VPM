@@ -1,4 +1,4 @@
-import { getPipedriveData, setPipedriveData } from '@/lib/data-store';
+import { getPipedriveData, getPipedriveMondeSnapshot, setPipedriveData } from '@/lib/data-store';
 import { syncPipedriveDirectData } from '@/lib/integrations/pipedrive-direct';
 import { buildPipedriveDashboardStore } from '@/lib/pipedrive-dashboard-store';
 import {
@@ -26,12 +26,13 @@ export async function syncPipedriveDirectSnapshot(): Promise<PipedriveDirectSync
   await setPipedriveDirectData(data);
 
   const currentDashboardStore = await getPipedriveData();
+  const mondeSnapshot = await getPipedriveMondeSnapshot();
   const dashboardStore = buildPipedriveDashboardStore({
     updatedAt: data.updatedAt,
-    mondeDeals: currentDashboardStore?.mondeDeals ?? [],
-    pipelineDeals: currentDashboardStore?.pipelineDeals ?? [],
+    mondeDeals: currentDashboardStore?.mondeDeals ?? mondeSnapshot?.mondeDeals ?? [],
+    pipelineDeals: currentDashboardStore?.pipelineDeals ?? mondeSnapshot?.pipelineDeals ?? [],
     directData: data,
-    fallbackPeriod: currentDashboardStore?.period ?? null,
+    fallbackPeriod: currentDashboardStore?.period ?? mondeSnapshot?.period ?? null,
   });
   await setPipedriveData(dashboardStore);
 

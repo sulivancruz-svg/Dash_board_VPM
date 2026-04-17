@@ -1,4 +1,4 @@
-import { getPipedriveData, setPipedriveData } from '@/lib/data-store';
+import { getPipedriveData, getPipedriveMondeSnapshot, setPipedriveData } from '@/lib/data-store';
 import { getGoogleAdsDataForDateRange, getGoogleAdsDataForPeriod } from '@/lib/google-ads-store';
 import { getGoogleAdsCredentials } from '@/lib/google-ads-credentials-store';
 import { syncGoogleAdsDataSnapshot } from '@/lib/google-ads-sync';
@@ -36,17 +36,20 @@ export async function loadGoogleAdsDashboardData(
 
 export async function loadPipedriveDashboardData() {
   let pipedriveData = await getPipedriveData();
-  if (pipedriveData) {
+  const mondeSnapshot = await getPipedriveMondeSnapshot();
+
+  if (pipedriveData && ((pipedriveData.mondeDeals?.length ?? 0) > 0 || !mondeSnapshot?.mondeDeals?.length)) {
     return pipedriveData;
   }
 
   const directData = await getPipedriveDirectData();
-  if (directData) {
+  if (directData || mondeSnapshot) {
     pipedriveData = buildPipedriveDashboardStore({
-      updatedAt: directData.updatedAt,
-      mondeDeals: [],
+      updatedAt: directData?.updatedAt || mondeSnapshot?.updatedAt || new Date().toISOString(),
+      mondeDeals: mondeSnapshot?.mondeDeals ?? [],
+      pipelineDeals: mondeSnapshot?.pipelineDeals ?? [],
       directData,
-      fallbackPeriod: null,
+      fallbackPeriod: mondeSnapshot?.period ?? null,
     });
     await setPipedriveData(pipedriveData);
     return pipedriveData;
