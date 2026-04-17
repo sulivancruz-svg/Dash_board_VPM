@@ -4,6 +4,7 @@ import { blobDel } from '@/lib/storage';
 export async function POST() {
   try {
     await blobDel('pipedrive-data');
+    await blobDel('pipedrive-monde-data');
 
     return NextResponse.json({
       message: 'Dados do Pipedrive removidos com sucesso',

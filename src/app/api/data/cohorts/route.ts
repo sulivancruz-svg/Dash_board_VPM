@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPipedriveData, type PipedriveDealRecord } from '@/lib/data-store';
+import { type PipedriveDealRecord } from '@/lib/data-store';
 import { buildPtBrDateLabel, resolveDateRange } from '@/lib/date-range';
 import { getGoogleAdsDataForDateRange } from '@/lib/google-ads-store';
 import { getMetaToken } from '@/lib/meta-token-store';
 import { getSourceControls } from '@/lib/source-controls';
+import { loadPipedriveDashboardData } from '@/lib/dashboard-snapshots';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -194,7 +195,7 @@ export async function GET(req: NextRequest) {
     );
 
     const sourceControls = await getSourceControls();
-    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
+    const pipedriveData = sourceControls.pipedriveEnabled ? await loadPipedriveDashboardData() : null;
     const pipelineDeals = Array.isArray(pipedriveData?.pipelineDeals) ? pipedriveData.pipelineDeals : [];
     const mondeDeals = Array.isArray(pipedriveData?.mondeDeals) ? pipedriveData.mondeDeals : [];
 

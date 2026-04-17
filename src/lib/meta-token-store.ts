@@ -40,7 +40,7 @@ export async function setMetaToken(
     accountId,
     accountName,
   };
-  await blobSetJson('meta-token', data);
+  await blobSetJson('meta-token', data, 'private');
 }
 
 export async function getMetaToken(): Promise<MetaTokenStore | null> {
@@ -62,7 +62,8 @@ export async function getMetaToken(): Promise<MetaTokenStore | null> {
         return { token: legacy.token, accountId: legacy.accountId, accountName: legacy.accountName };
       }
     } catch (error) {
-      console.error('Error decoding meta token:', error);
+      console.error('[meta-token] Error decoding blob data:', error);
+      return null;
     }
   }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSdrData, getPipedriveData } from '@/lib/data-store';
+import { getSdrData } from '@/lib/data-store';
 import { getSourceControls } from '@/lib/source-controls';
 import {
   attributeChannel,
@@ -7,8 +7,8 @@ import {
   ATTRIBUTION_LABELS,
   ATTRIBUTION_DESCRIPTIONS,
 } from '@/lib/channel-mapping';
-import { buildPtBrDateLabel, resolveDateRange } from '@/lib/date-range';
-import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
+import { buildPtBrDateLabel, resolveDashboardRange } from '@/lib/date-range';
+import { loadPipedriveDashboardMetrics } from '@/lib/dashboard-snapshots';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,23 +20,22 @@ const MONTH_ORDER: Record<string, number> = {
 
 export async function GET(req: NextRequest) {
   try {
-    const hasExplicitRange = (
-      req.nextUrl.searchParams.has('start')
-      || req.nextUrl.searchParams.has('end')
-      || req.nextUrl.searchParams.has('period')
+    const resolvedRange = resolveDashboardRange(
+      req.nextUrl.searchParams.get('start'),
+      req.nextUrl.searchParams.get('end'),
+      req.nextUrl.searchParams.get('period'),
     );
-    const range = hasExplicitRange
-      ? resolveDateRange(
-        req.nextUrl.searchParams.get('start'),
-        req.nextUrl.searchParams.get('end'),
-        Number.parseInt(req.nextUrl.searchParams.get('period') || '30', 10),
-      )
-      : null;
+    const range = resolvedRange.range;
 
     const sourceControls = await getSourceControls();
     const sdrData = sourceControls.sdrEnabled ? await getSdrData() : null;
-    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
-    const pipedriveMetrics = getPipedriveMetricsForRange(pipedriveData, range || undefined);
+    const {
+      pipedriveData,
+      pipedriveMetrics,
+      usedAvailableRangeFallback,
+    } = sourceControls.pipedriveEnabled
+      ? await loadPipedriveDashboardMetrics(range)
+      : { pipedriveData: null, pipedriveMetrics: null, usedAvailableRangeFallback: false };
 
     if (!sdrData && !pipedriveData) {
       return NextResponse.json({ hasData: false, channels: [], byAttribution: [] });
@@ -135,7 +134,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       hasData: true,
       updatedAt: pipedriveData?.updatedAt || sdrData?.updatedAt || null,
-      periodoMonde: range ? buildPtBrDateLabel(range) : (pipedriveMetrics?.period || pipedriveData?.period || null),
+      periodoMonde: usedAvailableRangeFallback
+        ? (pipedriveMetrics?.period || pipedriveData?.period || null)
+        : range ? buildPtBrDateLabel(range) : (pipedriveMetrics?.period || pipedriveData?.period || null),
+      usedAvailableRangeFallback,
       sources: {
         sdrEnabled: sourceControls.sdrEnabled,
         pipedriveEnabled: sourceControls.pipedriveEnabled,
@@ -145,6 +147,7 @@ export async function GET(req: NextRequest) {
       summary: {
         totalReceita,
         totalVendas,
+        totalCohortConverted: pipedriveMetrics?.totalCohortConverted || 0,
         totalLeads: pipedriveMetrics?.totalLeads || sdrData?.totalLeads || totalLeads,
         totalLost: pipedriveMetrics?.totalLost || 0,
         totalQualified: sdrData?.totalQualified || 0,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setPipedriveData } from '@/lib/data-store';
+import { setPipedriveData, setPipedriveMondeSnapshot } from '@/lib/data-store';
 import { parsePipedriveExcel } from '@/lib/etl/pipedrive-parser';
 import { buildPipedriveDashboardStore } from '@/lib/pipedrive-dashboard-store';
 import { getPipedriveDirectData } from '@/lib/pipedrive-direct-store';
@@ -15,9 +15,16 @@ export async function POST(req: NextRequest) {
 
     const buffer = await file.arrayBuffer();
     const parsed = parsePipedriveExcel(Buffer.from(buffer));
+    const updatedAt = new Date().toISOString();
     const directData = await getPipedriveDirectData();
+    await setPipedriveMondeSnapshot({
+      updatedAt,
+      period: parsed.period,
+      mondeDeals: parsed.mondeDeals ?? [],
+      pipelineDeals: parsed.pipelineDeals ?? [],
+    });
     const store = buildPipedriveDashboardStore({
-      updatedAt: new Date().toISOString(),
+      updatedAt,
       mondeDeals: parsed.mondeDeals ?? [],
       pipelineDeals: parsed.pipelineDeals ?? [],
       directData,
@@ -49,12 +56,27 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const { getPipedriveData: getPD } = await import('@/lib/data-store');
+    const { getPipedriveData: getPD, getPipedriveMondeSnapshot: getMonde } = await import('@/lib/data-store');
     const data = await getPD();
-    if (!data) {
+    if (data) {
+      return NextResponse.json(data);
+    }
+
+    const mondeSnapshot = await getMonde();
+    if (!mondeSnapshot) {
       return NextResponse.json({ error: 'Dados nao encontrados' }, { status: 404 });
     }
-    return NextResponse.json(data);
+
+    const directData = await getPipedriveDirectData();
+    const store = buildPipedriveDashboardStore({
+      updatedAt: mondeSnapshot.updatedAt,
+      mondeDeals: mondeSnapshot.mondeDeals,
+      pipelineDeals: mondeSnapshot.pipelineDeals,
+      directData,
+      fallbackPeriod: mondeSnapshot.period,
+    });
+    await setPipedriveData(store);
+    return NextResponse.json(store);
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao ler dados' }, { status: 500 });
   }

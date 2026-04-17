@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMetaToken } from '@/lib/meta-token-store';
-import { getSdrData, getPipedriveData } from '@/lib/data-store';
+import { getSdrData, getPipedriveData, setPipedriveData } from '@/lib/data-store';
 import { getSourceControls } from '@/lib/source-controls';
 import { attributeChannel, ChannelAttribution, ATTRIBUTION_LABELS } from '@/lib/channel-mapping';
-import { getGoogleAdsDataForDateRange, getGoogleAdsDataForPeriod } from '@/lib/google-ads-store';
 import { buildPtBrDateLabel, resolveDateRange, parseIsoDate, formatIsoDate } from '@/lib/date-range';
 import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
+import { loadGoogleAdsDashboardData, loadPipedriveDashboardData } from '@/lib/dashboard-snapshots';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -38,10 +38,10 @@ export async function GET(req: NextRequest) {
 
     // Carrega fontes conforme controles ativos
     const sdrData = sourceControls.sdrEnabled ? await getSdrData() : null;
-    const pipedriveData = sourceControls.pipedriveEnabled ? await getPipedriveData() : null;
+    const pipedriveData = sourceControls.pipedriveEnabled ? await loadPipedriveDashboardData() : null;
     const pipedriveMetrics = getPipedriveMetricsForRange(pipedriveData, range);
     const googleAdsData = sourceControls.googleAdsEnabled
-      ? await getGoogleAdsDataForDateRange(range.start, range.end) || await getGoogleAdsDataForPeriod(periodDays)
+      ? await loadGoogleAdsDashboardData(range.start, range.end, periodDays)
       : null;
 
     // ────────────────────────────────────────────────
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       periodDays: range.periodDays,
     };
     const googleAdsPrevious = sourceControls.googleAdsEnabled
-      ? await getGoogleAdsDataForDateRange(previousRange.start, previousRange.end) || await getGoogleAdsDataForPeriod(periodDays)
+      ? await loadGoogleAdsDashboardData(previousRange.start, previousRange.end, periodDays)
       : null;
 
     // ────────────────────────────────────────────────

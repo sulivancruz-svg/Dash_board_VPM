@@ -11,6 +11,7 @@ import type {
 } from '@/app/api/data/intelligence/route';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
+import { fetchApiJson } from '@/lib/api-client';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -563,9 +564,7 @@ export default function IntelligencePage() {
     setLoading(true); setError(null);
     try {
       const params = new URLSearchParams({ start: dateRange.start, end: dateRange.end });
-      const res = await fetch(`/api/data/intelligence?${params}`, { cache: 'no-store' });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
+      const json = await fetchApiJson<IntelligenceData>(`/api/data/intelligence?${params}`, { cache: 'no-store' });
       setData(json);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro desconhecido');
@@ -635,6 +634,9 @@ export default function IntelligencePage() {
         <>
           <ChannelRankingSection    channels={data.channelRanking} />
           <TemporalSection          channels={data.temporalByChannel} allMonthKeys={data.allMonthKeys} />
+          <GoogleProjectionSection  proj={data.googleProjection} />
+          <EfficiencySection        scores={data.efficiencyScores} />
+          <AnomalySection           anomalies={data.anomalies} />
         </>
       )}
     </div>

@@ -5,6 +5,7 @@ import { Loader, Upload, ArrowRight, Info, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 import { DateRangeFilter } from '@/components/date-range-filter';
+import { fetchApiJson } from '@/lib/api-client';
 
 function fmt(n: number, type: 'currency' | 'number' | 'pct' = 'number'): string {
   if (type === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
@@ -76,6 +77,7 @@ interface MonthRow {
 interface ChannelsData {
   hasData: boolean;
   periodoMonde?: string;
+  usedAvailableRangeFallback?: boolean;
   sources?: {
     sdrEnabled: boolean;
     pipedriveEnabled: boolean;
@@ -126,26 +128,29 @@ export default function FunnelPage() {
   const { activePeriod, dateRange, setPresetPeriod, setCustomDateRange } = useDashboardDateRange();
   const [data, setData] = useState<ChannelsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams({
-      period: activePeriod === 'custom' ? '30' : activePeriod,
+      period: activePeriod,
       start: dateRange.start,
       end: dateRange.end,
     });
     const controller = new AbortController();
 
     setLoading(true);
-    fetch(`/api/data/channels?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
-      .then(r => r.json())
+    setError(null);
+    fetchApiJson<ChannelsData>(`/api/data/channels?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
       .then(payload => {
         if (!controller.signal.aborted) {
           setData(payload);
         }
       })
       .catch(error => {
-        if (error.name !== 'AbortError') {
+        if (error.name !== 'AbortError' && !controller.signal.aborted) {
           console.error(error);
+          setData(null);
+          setError(error instanceof Error ? error.message : 'Erro ao carregar o funil.');
         }
       })
       .finally(() => {
@@ -205,10 +210,29 @@ export default function FunnelPage() {
         </div>
       </div>
 
+      {data?.usedAvailableRangeFallback && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          O período selecionado não tinha dados suficientes do Pipe/Monde. O funil está exibindo automaticamente o intervalo disponível salvo no backend.
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader className="w-6 h-6 animate-spin text-blue-500" />
           <span className="ml-2 text-sm text-slate-500">Carregando...</span>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-12 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Info className="w-7 h-7 text-red-400" />
+          </div>
+          <h3 className="text-base font-semibold text-red-700 mb-2">Erro ao carregar o funil</h3>
+          <p className="text-sm text-red-600 mb-5">{error}</p>
+          <Link href="/login"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors">
+            <Upload className="w-4 h-4" />
+            Entrar novamente
+          </Link>
         </div>
       ) : !data?.hasData ? (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">

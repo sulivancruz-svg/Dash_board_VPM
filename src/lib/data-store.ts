@@ -55,6 +55,13 @@ export interface PipedriveStore {
   mondeDeals?: PipedriveDealRecord[];
 }
 
+export interface PipedriveMondeSnapshot {
+  updatedAt: string;
+  period: string | null;
+  mondeDeals: PipedriveDealRecord[];
+  pipelineDeals: PipedriveDealRecord[];
+}
+
 /* ── SDR (small → KV) ─────────────────────────────── */
 
 export async function setSdrData(data: SdrStore): Promise<void> {
@@ -73,4 +80,12 @@ export async function setPipedriveData(data: PipedriveStore): Promise<void> {
 
 export async function getPipedriveData(): Promise<PipedriveStore | null> {
   return blobGetJson<PipedriveStore>('pipedrive-data');
+}
+
+export async function setPipedriveMondeSnapshot(data: PipedriveMondeSnapshot): Promise<void> {
+  await blobSetJson('pipedrive-monde-data', data);
+}
+
+export async function getPipedriveMondeSnapshot(): Promise<PipedriveMondeSnapshot | null> {
+  return blobGetJson<PipedriveMondeSnapshot>('pipedrive-monde-data');
 }

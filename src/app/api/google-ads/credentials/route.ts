@@ -91,7 +91,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Erro ao salvar credenciais Google Ads:', error);
-    return NextResponse.json({ error: 'Erro ao salvar credenciais' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro ao salvar credenciais' },
+      { status: 500 },
+    );
   }
 }
 
@@ -103,7 +106,10 @@ export async function DELETE() {
   try {
     await deleteGoogleAdsCredentials();
     return NextResponse.json({ success: true, message: 'Credenciais removidas' });
-  } catch {
-    return NextResponse.json({ error: 'Erro ao remover credenciais' }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro ao remover credenciais' },
+      { status: 500 },
+    );
   }
 }

@@ -117,7 +117,7 @@ export async function setPipedriveDirectCredentials(input: {
     connectedAt: now,
     lastValidatedAt: now,
   };
-  await blobSetJson('pipedrive-direct-config', payload);
+  await blobSetJson('pipedrive-direct-config', payload, 'private');
 }
 
 export async function clearPipedriveDirectCredentials(): Promise<void> {
