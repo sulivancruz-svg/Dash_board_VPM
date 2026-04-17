@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 
 interface Column {
   key: string;
@@ -9,14 +8,14 @@ interface Column {
 
 interface DataTableProps {
   columns: Column[];
-  data: Record<string, any>[];
+  data: Record<string, string | number | Date>[];
   onPageChange?: (page: number) => void;
   currentPage?: number;
   totalPages?: number;
 }
 
 export function DataTable({ columns, data, onPageChange, currentPage = 1, totalPages = 1 }: DataTableProps) {
-  const formatValue = (value: any, format?: string) => {
+  const formatValue = (value: string | number | Date, format?: string) => {
     if (format === 'currency') return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     if (format === 'date') return new Date(value).toLocaleDateString('pt-BR');
     return String(value);
@@ -35,8 +34,8 @@ export function DataTable({ columns, data, onPageChange, currentPage = 1, totalP
           </tr>
         </thead>
         <tbody>
-          {data.map((row, idx) => (
-            <tr key={idx} className="border-b hover:bg-gray-50">
+          {data.map((row) => (
+            <tr key={String(row.id)} className="border-b hover:bg-gray-50">
               {columns.map(col => (
                 <td key={col.key} className="px-6 py-4 text-sm text-gray-700">
                   {formatValue(row[col.key], col.format)}

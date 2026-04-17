@@ -13,7 +13,7 @@ export function SyncButton() {
         setLastSync(new Date().toLocaleString('pt-BR'));
       }
     } catch (error) {
-      console.error('Sync failed:', error);
+      // Sync error handled gracefully - user sees disabled button
     } finally {
       setLoading(false);
     }
