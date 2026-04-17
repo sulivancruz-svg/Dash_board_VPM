@@ -13,6 +13,8 @@ const IS_KV = !!process.env.KV_REST_API_URL;
 const IS_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 const IS_VERCEL = !!process.env.VERCEL;
 const LOCAL_BASE = IS_VERCEL ? '/tmp' : process.cwd();
+type BlobAccessMode = 'public' | 'private';
+let resolvedBlobAccessMode: BlobAccessMode | null = null;
 
 export interface StorageStatus {
   hasBlob: boolean;
@@ -69,6 +71,26 @@ function getErrorMessage(error: unknown): string {
   } catch {
     return String(error);
   }
+}
+
+function getAlternateBlobAccess(access: BlobAccessMode): BlobAccessMode {
+  return access === 'private' ? 'public' : 'private';
+}
+
+function buildBlobAccessOrder(preferred: BlobAccessMode): BlobAccessMode[] {
+  const order: BlobAccessMode[] = [];
+
+  for (const candidate of [resolvedBlobAccessMode, preferred, getAlternateBlobAccess(preferred)]) {
+    if (candidate && !order.includes(candidate)) {
+      order.push(candidate);
+    }
+  }
+
+  return order;
+}
+
+function rememberBlobAccessMode(access: BlobAccessMode): void {
+  resolvedBlobAccessMode = access;
 }
 
 /* KV */
@@ -134,25 +156,35 @@ export async function kvDel(key: string): Promise<void> {
 
 export async function blobGetJson<T>(key: string): Promise<T | null> {
   if (IS_BLOB) {
+    let blobError: unknown = null;
     try {
-      const { list } = await import('@vercel/blob');
-      const result = await list({ prefix: `${key}.json`, limit: 1 });
-      const blobs = result?.blobs ?? [];
-      if (blobs.length > 0) {
-        const blobUrl = blobs[0].url;
-        let res = await fetch(blobUrl, { cache: 'no-store' });
-        if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
-          res = await fetch(blobUrl, {
-            cache: 'no-store',
-            headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-          });
-        }
-        if (res.ok) {
-          return (await res.json()) as T;
+      const { get } = await import('@vercel/blob');
+      const pathname = `${key}.json`;
+
+      for (const access of buildBlobAccessOrder('private')) {
+        try {
+          const result = await get(pathname, { access });
+          if (!result) {
+            continue;
+          }
+
+          const payload = await new Response(result.stream).text();
+          if (!payload) {
+            return null;
+          }
+
+          rememberBlobAccessMode(access);
+          return JSON.parse(payload) as T;
+        } catch (error) {
+          blobError = error;
         }
       }
     } catch (e) {
-      console.error(`[storage] blobGetJson(${key}) blob failed, falling back to KV:`, e);
+      blobError = e;
+    }
+
+    if (blobError) {
+      console.error(`[storage] blobGetJson(${key}) blob failed, falling back to KV:`, blobError);
     }
   }
 
@@ -192,33 +224,29 @@ export async function blobSetJson(
 
   if (IS_BLOB) {
     try {
-      const { put, list, del } = await import('@vercel/blob');
+      const { put } = await import('@vercel/blob');
       const payload = JSON.stringify(value);
-      const options = {
-        access,
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: 'application/json',
-      } as Parameters<typeof put>[2];
+      const pathname = `${key}.json`;
 
-      try {
-        await put(`${key}.json`, payload, options);
-        return;
-      } catch (initialError) {
-        blobFailure = initialError;
+      for (const candidateAccess of buildBlobAccessOrder(access)) {
+        try {
+          await put(pathname, payload, {
+            access: candidateAccess,
+            addRandomSuffix: false,
+            allowOverwrite: true,
+            contentType: 'application/json',
+          } as Parameters<typeof put>[2]);
+          rememberBlobAccessMode(candidateAccess);
+          return;
+        } catch (error) {
+          blobFailure = error;
+        }
       }
-
-      const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
-      if (blobs.length > 0) {
-        await del(blobs.map((b) => b.url));
-      }
-
-      await put(`${key}.json`, payload, options);
-      return;
     } catch (e) {
       blobFailure = e;
-      console.error(`[storage] blobSetJson(${key}) blob failed, falling back to KV:`, e);
     }
+
+    console.error(`[storage] blobSetJson(${key}) blob failed, falling back to KV:`, blobFailure);
   }
 
   if (IS_KV) {
@@ -242,11 +270,8 @@ export async function blobSetJson(
 export async function blobDel(key: string): Promise<void> {
   if (IS_BLOB) {
     try {
-      const { list, del } = await import('@vercel/blob');
-      const { blobs } = await list({ prefix: `${key}.json`, limit: 10 });
-      if (blobs.length > 0) {
-        await del(blobs.map((b) => b.url));
-      }
+      const { del } = await import('@vercel/blob');
+      await del(`${key}.json`);
     } catch (e) {
       console.error(`[storage] blobDel(${key}) blob failed:`, e);
     }
@@ -280,13 +305,24 @@ export async function blobUploadFile(
 ): Promise<string> {
   if (IS_BLOB) {
     const { put } = await import('@vercel/blob');
-    const result = await put(blobPath, buffer, {
-      access,
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType,
-    } as Parameters<typeof put>[2]);
-    return result.url;
+    let blobFailure: unknown = null;
+
+    for (const candidateAccess of buildBlobAccessOrder(access)) {
+      try {
+        const result = await put(blobPath, buffer, {
+          access: candidateAccess,
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          contentType,
+        } as Parameters<typeof put>[2]);
+        rememberBlobAccessMode(candidateAccess);
+        return result.url;
+      } catch (error) {
+        blobFailure = error;
+      }
+    }
+
+    throw new Error(`blobUploadFile(${blobPath}) falhou no Blob. Detalhe do Blob: ${getErrorMessage(blobFailure)}`);
   }
   if (shouldBlockEphemeralPersistence()) {
     throw getEphemeralStorageError(`blobUploadFile(${blobPath})`);
