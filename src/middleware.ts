@@ -13,8 +13,9 @@ export default withAuth(
 );
 
 export const config = {
-  // Protege todas as rotas exceto login, APIs, e assets estáticos
+  // Protege rotas /corporate/* com autenticação via NextAuth
+  // Exclui login, api/auth, sync-manual (endpoint sem auth check), assets estáticos
   matcher: [
-    '/((?!login|_next/static|_next/image|favicon.ico|branding-assets|api/).*)',
+    '/((?!login|api/auth|api/corporate/sync-manual|_next/static|_next/image|favicon.ico|branding-assets).*)',
   ],
 };
