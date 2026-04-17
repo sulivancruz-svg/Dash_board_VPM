@@ -2,18 +2,39 @@
 import { useEffect, useState } from 'react';
 import { DataTable } from '@/components/corporate/DataTable';
 
+interface ClientData {
+  id: string;
+  name: string;
+  revenue: number;
+  sales: number;
+  avgTicket: number;
+}
+
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/corporate/clients?limit=50')
+    const controller = new AbortController();
+
+    fetch('/api/corporate/clients?limit=50', { signal: controller.signal })
       .then(r => r.json())
       .then(d => { setClients(d.clients); setLoading(false); })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => {
+        if (e instanceof Error && e.name !== 'AbortError') {
+          const errorMsg = e instanceof Error ? e.message : 'Erro desconhecido';
+          setError(`Falha ao carregar dados: ${errorMsg}`);
+        }
+        setLoading(false);
+      });
+
+    return () => controller.abort();
   }, []);
 
-  if (loading) return <div className="text-center py-12">Carregando...</div>;
+  if (loading) return <div className="text-center py-12" role="status" aria-live="polite" aria-label="Carregando dados de clientes">Carregando...</div>;
+
+  if (error) return <div className="text-center py-12 text-red-600" role="alert">{error}</div>;
 
   return (
     <div className="space-y-8">
