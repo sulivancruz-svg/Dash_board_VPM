@@ -13,8 +13,8 @@ export default withAuth(
 );
 
 export const config = {
-  // Protege todas as rotas exceto login e assets estáticos
+  // Protege todas as rotas exceto login, APIs, e assets estáticos
   matcher: [
-    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|branding-assets).*)',
+    '/((?!login|_next/static|_next/image|favicon.ico|branding-assets|api/).*)',
   ],
 };
