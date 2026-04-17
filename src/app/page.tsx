@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
+import { DateRangeFilter } from '@/components/date-range-filter';
 
 function fmt(n: number, type: 'currency' | 'number' | 'pct' | 'multiplier' = 'number'): string {
   if (type === 'currency') {
@@ -228,6 +229,12 @@ export default function OverviewPage() {
               )}
             </div>
           )}
+          <DateRangeFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            onPresetSelect={setPresetPeriod}
+            onRangeChange={setCustomDateRange}
+          />
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-
+import { DateRangeFilter } from '@/components/date-range-filter';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
 
 export default function BrandingPage() {
@@ -13,6 +13,12 @@ export default function BrandingPage() {
           <h1 className="text-3xl font-bold text-gray-900">Branding & Leitura Estrategica</h1>
           <p className="text-gray-600 mt-2">Proxies de construcao de marca e analise de impacto de longo prazo</p>
         </div>
+        <DateRangeFilter
+          activePeriod={activePeriod}
+          dateRange={dateRange}
+          onPresetSelect={setPresetPeriod}
+          onRangeChange={setCustomDateRange}
+        />
       </div>
 
       <div className="card">

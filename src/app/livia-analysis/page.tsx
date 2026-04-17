@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Loader, AlertCircle, ArrowRight, TrendingUp, Clock, DollarSign } from 'lucide-react';
 import type { PipedriveDirectRecentDeal } from '@/lib/pipedrive-direct-store';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
-
+import { DateRangeFilter } from '@/components/date-range-filter';
 
 interface CanalRow {
   canal: string;
@@ -227,6 +227,12 @@ export default function LiviaAnalysisPage() {
           <h1 className="text-2xl font-bold text-slate-900">Análise Livia</h1>
           <p className="text-xs text-slate-400 mt-1">Funil Pré Vendas — deals won por wonTime, abertos sempre visíveis, perdidos por criação</p>
         </div>
+        <DateRangeFilter
+          activePeriod={activePeriod}
+          dateRange={dateRange}
+          onPresetSelect={setPresetPeriod}
+          onRangeChange={setCustomDateRange}
+        />
       </div>
 
       {loading ? (
