@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SaleStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales CorporateSale[]
+
+  @@map("users")
+}
+
+model CorporateSale {
+  id           String       @id @default(cuid())
+  date         DateTime
+  seller       User         @relation(fields: [sellerId], references: [id])
+  sellerId     String
+  client       String
+  product      String
+  amount       Float
+  commission   Float
+  status       SaleStatus   @default(PENDING)
+  sheetId      String?
+  sheetRowId   Int?
+  lastSyncAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  snapshots CorporateSalesSnapshot[]
+
+  @@index([date])
+  @@index([sellerId])
+  @@index([status])
+  @@map("corporate_sales")
+}
+
+model CorporateSalesSnapshot {
+  id           String   @id @default(cuid())
+  date         DateTime
+  totalSales   Float
+  totalClients Int
+  totalProducts Int
+  avgTicket    Float
+  topSeller    String?
+  topClient    String?
+  topProduct   String?
+  createdAt    DateTime @default(now())
+
+  sale   CorporateSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId String
+
+  @@index([date])
+  @@map("corporate_sales_snapshots")
+}
