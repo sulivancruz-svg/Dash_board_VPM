@@ -15,21 +15,24 @@ interface KpiCardProps {
 }
 
 export function KpiCard({ title, value, subtitle, icon, trend, className = '' }: KpiCardProps) {
-  const trendColor = trend?.direction === 'up' ? 'text-green-600' : trend?.direction === 'down' ? 'text-red-600' : 'text-gray-600';
+  const trendColor =
+    trend?.direction === 'up' ? 'text-emerald-300' : trend?.direction === 'down' ? 'text-rose-300' : 'text-slate-300';
 
   return (
-    <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
+    <div className={`bg-[#0B2440] border border-cyan-400/15 rounded shadow-[0_14px_35px_rgba(0,0,0,0.24)] p-5 ${className}`}>
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-gray-500 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-          {subtitle && <p className="text-gray-500 text-sm mt-2">{subtitle}</p>}
+        <div className="flex-1 min-w-0">
+          <p className="text-cyan-100/70 text-xs font-semibold uppercase tracking-wider">{title}</p>
+          <p className="text-3xl font-black text-white mt-2 leading-tight break-words">{value}</p>
+          {subtitle && <p className="text-cyan-100/60 text-sm mt-2">{subtitle}</p>}
         </div>
-        {icon && <div className="text-2xl text-gray-400">{icon}</div>}
+        {icon && <div className="text-2xl text-emerald-300">{icon}</div>}
       </div>
       {trend && (
-        <div className={`mt-4 text-sm font-medium ${trendColor}`}>
-          {trend.direction === 'up' && '↑ '} {trend.direction === 'down' && '↓ '} {Math.abs(trend.value)}%
+        <div className={`mt-4 text-sm font-bold ${trendColor}`}>
+          {trend.direction === 'up' && '↑ '}
+          {trend.direction === 'down' && '↓ '}
+          {Math.abs(trend.value)}%
         </div>
       )}
     </div>

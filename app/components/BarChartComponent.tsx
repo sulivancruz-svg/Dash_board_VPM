@@ -11,39 +11,60 @@ interface BarChartComponentProps {
     key: string;
     label: string;
     color: string;
+    yAxisId?: 'left' | 'right';
   }>;
   height?: number;
   formatYAxis?: 'currency' | 'number';
 }
 
 export function BarChartComponent({ data, title, bars, height = 300, formatYAxis = 'number' }: BarChartComponentProps) {
+  const hasRightAxis = bars.some((bar) => bar.yAxisId === 'right');
+
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="rounded border border-cyan-400/15 bg-[#0B2440] p-5 shadow-[0_14px_35px_rgba(0,0,0,0.24)]">
+      <h3 className="mb-4 text-lg font-bold text-white">{title}</h3>
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+        <BarChart data={data} margin={{ top: 10, right: hasRightAxis ? 24 : 20, left: 0, bottom: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.18)" />
+          <XAxis dataKey="name" tick={{ fill: '#B9D7F3', fontSize: 12 }} axisLine={{ stroke: '#234B70' }} tickLine={false} />
           <YAxis
+            yAxisId="left"
+            tick={{ fill: '#B9D7F3', fontSize: 12 }}
+            axisLine={{ stroke: '#234B70' }}
+            tickLine={false}
             tickFormatter={(value) =>
-              formatYAxis === 'currency'
-                ? `R$ ${(value / 1000).toFixed(0)}k`
-                : value.toLocaleString('pt-BR')
+              formatYAxis === 'currency' ? `R$ ${(value / 1000).toFixed(0)}k` : value.toLocaleString('pt-BR')
             }
           />
+          {hasRightAxis && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fill: '#B9D7F3', fontSize: 12 }}
+              axisLine={{ stroke: '#234B70' }}
+              tickLine={false}
+              tickFormatter={(value) => value.toLocaleString('pt-BR')}
+            />
+          )}
           <Tooltip
-            formatter={(value: any) =>
-              formatYAxis === 'currency' ? formatCurrency(value) : value.toLocaleString('pt-BR')
-            }
-            labelFormatter={(label) => `${label}`}
+            contentStyle={{ background: '#061427', border: '1px solid rgba(34,211,238,0.25)', color: '#EAF2FF' }}
+            labelStyle={{ color: '#EAF2FF' }}
+            formatter={(value: any, name: any) => {
+              const label = String(name);
+              return label.toLowerCase().includes('faturamento') || label.toLowerCase().includes('receita')
+                ? formatCurrency(value)
+                : value.toLocaleString('pt-BR');
+            }}
           />
-          <Legend />
+          <Legend wrapperStyle={{ color: '#B9D7F3' }} />
           {bars.map((bar) => (
             <Bar
               key={bar.key}
               dataKey={bar.key}
+              yAxisId={bar.yAxisId || 'left'}
               fill={bar.color}
               name={bar.label}
+              radius={[4, 4, 0, 0]}
             />
           ))}
         </BarChart>

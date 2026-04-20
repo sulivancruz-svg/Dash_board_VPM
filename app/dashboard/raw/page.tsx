@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DataTable } from '@/components/DataTable';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { useSharedDateRange } from '@/lib/use-shared-date-range';
 import { RawSaleData } from '@/types';
 
 export default function RawPage() {
@@ -11,12 +12,7 @@ export default function RawPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 50, total: 0, pages: 0 });
-  const [startDate, setStartDate] = useState<Date>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    return d;
-  });
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const { startDate, endDate, setDateRange } = useSharedDateRange();
 
   const fetchData = async (start: Date, end: Date, page: number = 1) => {
     try {
@@ -28,8 +24,12 @@ export default function RawPage() {
         pageSize: '50',
       });
       const response = await fetch(`/api/raw?${params}`);
-      if (!response.ok) throw new Error('Falha ao carregar dados');
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.details || result?.error || 'Falha ao carregar dados');
+      }
+
       setData(result.data);
       setPagination(result.pagination);
       setError(null);
@@ -45,8 +45,7 @@ export default function RawPage() {
   }, [startDate, endDate]);
 
   const handleDateChange = (newStart: Date, newEnd: Date) => {
-    setStartDate(newStart);
-    setEndDate(newEnd);
+    setDateRange(newStart, newEnd);
     setPagination({ ...pagination, page: 1 });
   };
 
@@ -56,18 +55,18 @@ export default function RawPage() {
     { key: 'client' as const, label: 'Cliente', width: '20%' },
     { key: 'product' as const, label: 'Produto', width: '20%' },
     { key: 'amount' as const, label: 'Valor', render: (value: number) => formatCurrency(value) },
-    { key: 'commission' as const, label: 'Comissão', render: (value: number) => formatCurrency(value) },
+    { key: 'commission' as const, label: 'Receitas', render: (value: number) => formatCurrency(value) },
     {
       key: 'status' as const,
       label: 'Status',
       render: (value: string) => (
         <span
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
-            value === 'COMPLETED'
-              ? 'bg-green-100 text-green-800'
-              : value === 'CANCELLED'
-              ? 'bg-red-100 text-red-800'
-              : 'bg-yellow-100 text-yellow-800'
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            value === 'Fechada'
+              ? 'bg-emerald-400/15 text-emerald-200'
+              : value === 'Cancelada'
+              ? 'bg-rose-400/15 text-rose-200'
+              : 'bg-amber-400/15 text-amber-200'
           }`}
         >
           {value}
@@ -78,21 +77,19 @@ export default function RawPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Dados Brutos de Vendas</h1>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Auditoria</p>
+        <h1 className="mt-1 text-3xl font-bold text-white">Dados Brutos de Vendas</h1>
+      </div>
 
       <DateRangePicker onDateChange={handleDateChange} defaultStartDate={startDate} defaultEndDate={endDate} />
 
-      {loading && <div className="text-center py-8 text-gray-500">Carregando dados...</div>}
+      {loading && <div className="text-center py-8 text-cyan-100/70">Carregando dados...</div>}
+      {error && <div className="rounded border border-rose-400/30 bg-rose-500/10 p-4 text-rose-100">{error}</div>}
 
-      {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">{error}</div>}
-
-      {!loading && (
+      {!loading && !error && (
         <>
-          <DataTable
-            data={data}
-            columns={columns}
-            title={`Total: ${pagination.total} vendas (Página ${pagination.page} de ${pagination.pages})`}
-          />
+          <DataTable data={data} columns={columns} title={`Total: ${pagination.total} vendas (Página ${pagination.page} de ${pagination.pages})`} />
 
           {pagination.pages > 1 && (
             <div className="flex justify-center gap-2">
@@ -104,11 +101,11 @@ export default function RawPage() {
                   }
                 }}
                 disabled={pagination.page === 1}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-md transition-colors"
+                className="rounded bg-emerald-400 px-4 py-2 font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:bg-slate-700 disabled:text-cyan-100/40"
               >
                 Anterior
               </button>
-              <span className="px-4 py-2 text-gray-900">{pagination.page}</span>
+              <span className="px-4 py-2 text-cyan-50">{pagination.page}</span>
               <button
                 onClick={() => {
                   if (pagination.page < pagination.pages) {
@@ -117,7 +114,7 @@ export default function RawPage() {
                   }
                 }}
                 disabled={pagination.page === pagination.pages}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-md transition-colors"
+                className="rounded bg-emerald-400 px-4 py-2 font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:bg-slate-700 disabled:text-cyan-100/40"
               >
                 Próxima
               </button>

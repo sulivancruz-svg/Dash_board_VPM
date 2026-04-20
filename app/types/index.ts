@@ -7,9 +7,9 @@ export interface CorporateSale {
   amount: number;
   commission: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  sheetId?: string;
-  sheetRowId?: number;
-  lastSyncAt?: Date;
+  sheetId: string | null;
+  sheetRowId: number | null;
+  lastSyncAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +48,9 @@ export interface OverviewData {
   topClientAmount: number;
   topProductName: string;
   topProductAmount: number;
+  topSellers?: Array<{ name: string; revenue: number; sales: number }>;
+  topClients?: Array<{ name: string; revenue: number; sales: number }>;
+  topProducts?: Array<{ name: string; revenue: number; sales: number }>;
   salesTrend: Array<{
     date: string;
     sales: number;
@@ -90,15 +93,25 @@ export interface ProductsData {
 }
 
 export interface BehavioralData {
-  date: string;
-  hour: number;
-  salesCount: number;
-  revenue: number;
-  avgTicket: number;
+  totalSales: number;
+  avgAdvanceDays: number;
+  bookingPatterns: Array<{ name: string; sales: number }>;
+  customerProfiles: Array<{ name: string; clients: number }>;
+  salesByDate: Array<{ date: string; sales: number; revenue: number }>;
 }
 
 export interface ComparisonData {
   period: string;
+  currentPeriodRange?: {
+    startDate: string;
+    endDate: string;
+    label: string;
+  };
+  previousPeriodRange?: {
+    startDate: string;
+    endDate: string;
+    label: string;
+  };
   previousPeriod: {
     totalSales: number;
     totalRevenue: number;
@@ -114,6 +127,7 @@ export interface ComparisonData {
     revenueGrowth: number;
     avgTicketGrowth: number;
   };
+  chartData: Array<{ name: string; anterior: number; atual: number }>;
 }
 
 export interface RawSaleData extends CorporateSale {

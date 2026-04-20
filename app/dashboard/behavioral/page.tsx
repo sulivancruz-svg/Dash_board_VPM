@@ -1,21 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { LineChartComponent } from '@/components/LineChartComponent';
+import React, { useEffect, useState } from 'react';
+import { BarChartComponent } from '@/components/BarChartComponent';
 import { DateRangePicker } from '@/components/DateRangePicker';
-import { formatCurrency } from '@/lib/format';
+import { KpiCard } from '@/components/KpiCard';
+import { LineChartComponent } from '@/components/LineChartComponent';
+import { formatNumber } from '@/lib/format';
+import { useSharedDateRange } from '@/lib/use-shared-date-range';
 import { BehavioralData } from '@/types';
 
 export default function BehavioralPage() {
-  const [data, setData] = useState<BehavioralData[]>([]);
+  const [data, setData] = useState<BehavioralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    return d;
-  });
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const { startDate, endDate, setDateRange } = useSharedDateRange();
 
   const fetchData = async (start: Date, end: Date) => {
     try {
@@ -25,8 +23,12 @@ export default function BehavioralPage() {
         endDate: end.toISOString().split('T')[0],
       });
       const response = await fetch(`/api/behavioral?${params}`);
-      if (!response.ok) throw new Error('Falha ao carregar dados');
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.details || result?.error || 'Falha ao carregar dados');
+      }
+
       setData(result);
       setError(null);
     } catch (err) {
@@ -40,47 +42,53 @@ export default function BehavioralPage() {
     fetchData(startDate, endDate);
   }, [startDate, endDate]);
 
-  const handleDateChange = (newStart: Date, newEnd: Date) => {
-    setStartDate(newStart);
-    setEndDate(newEnd);
-  };
-
-  // Transform data for charts
-  const chartData = data.map((d) => ({
-    name: `${d.hour.toString().padStart(2, '0')}:00`,
-    'Número de Vendas': d.salesCount,
-    'Receita (R$)': d.revenue,
-    'Ticket Médio': d.avgTicket,
-  }));
-
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Análise Comportamental</h1>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Padrões de compra</p>
+        <h1 className="mt-1 text-3xl font-bold text-white">Comportamento</h1>
+      </div>
 
-      <DateRangePicker onDateChange={handleDateChange} defaultStartDate={startDate} defaultEndDate={endDate} />
+      <DateRangePicker onDateChange={setDateRange} defaultStartDate={startDate} defaultEndDate={endDate} />
 
-      {loading && <div className="text-center py-8 text-gray-500">Carregando dados...</div>}
+      {loading && <div className="text-center py-8 text-cyan-100/70">Carregando dados...</div>}
+      {error && <div className="rounded border border-rose-400/30 bg-rose-500/10 p-4 text-rose-100">{error}</div>}
 
-      {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">{error}</div>}
-
-      {!loading && data.length > 0 && (
+      {data && !loading && !error && (
         <>
-          <LineChartComponent
-            data={chartData}
-            title="Vendas por Hora do Dia"
-            lines={[
-              { key: 'Número de Vendas', label: 'Número de Vendas', color: '#3B82F6' },
-              { key: 'Receita (R$)', label: 'Receita (R$)', color: '#10B981' },
-            ]}
-            height={400}
-          />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <KpiCard title="Vendas no Período" value={data.totalSales} subtitle="Registros filtrados por data de venda" />
+            <KpiCard
+              title="Antecedência Média"
+              value={`${formatNumber(data.avgAdvanceDays, 1)} dias`}
+              subtitle="Da venda até o início da viagem"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <BarChartComponent
+              data={data.bookingPatterns}
+              title="Vendas por Antecedência"
+              bars={[{ key: 'sales', label: 'Vendas', color: '#38BDF8' }]}
+              height={340}
+            />
+            <BarChartComponent
+              data={data.customerProfiles}
+              title="Perfil de Recorrência dos Clientes"
+              bars={[{ key: 'clients', label: 'Clientes', color: '#10B981' }]}
+              height={340}
+            />
+          </div>
 
           <LineChartComponent
-            data={chartData}
-            title="Ticket Médio por Hora"
-            lines={[{ key: 'Ticket Médio', label: 'Ticket Médio', color: '#F59E0B' }]}
-            height={300}
-            formatYAxis="currency"
+            data={data.salesByDate}
+            title="Evolução de Vendas no Período"
+            lines={[
+              { key: 'sales', label: 'Vendas', color: '#38BDF8' },
+              { key: 'revenue', label: 'Faturamento', color: '#10B981' },
+            ]}
+            formatYAxis="number"
+            height={360}
           />
         </>
       )}

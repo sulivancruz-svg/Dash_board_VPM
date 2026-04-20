@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { formatDate } from '@/lib/format';
+import React, { useEffect, useState } from 'react';
+import { toDateInputValue, writeBrowserDateRange } from '@/lib/date-range';
 
 interface DateRangePickerProps {
   onDateChange: (startDate: Date, endDate: Date) => void;
@@ -13,68 +13,65 @@ export function DateRangePicker({ onDateChange, defaultStartDate, defaultEndDate
   const endDate = defaultEndDate || new Date();
   const startDate = defaultStartDate || new Date(endDate.getFullYear(), endDate.getMonth() - 1, endDate.getDate());
 
-  const [localStartDate, setLocalStartDate] = useState(startDate.toISOString().split('T')[0]);
-  const [localEndDate, setLocalEndDate] = useState(endDate.toISOString().split('T')[0]);
+  const [localStartDate, setLocalStartDate] = useState(toDateInputValue(startDate));
+  const [localEndDate, setLocalEndDate] = useState(toDateInputValue(endDate));
+
+  useEffect(() => {
+    setLocalStartDate(toDateInputValue(startDate));
+    setLocalEndDate(toDateInputValue(endDate));
+  }, [startDate, endDate]);
 
   const handleApply = () => {
-    onDateChange(new Date(localStartDate), new Date(localEndDate));
+    const start = new Date(`${localStartDate}T00:00:00`);
+    const end = new Date(`${localEndDate}T00:00:00`);
+    writeBrowserDateRange(start, end);
+    onDateChange(start, end);
   };
 
   const handlePreset = (days: number) => {
     const end = new Date();
     const start = new Date(end);
     start.setDate(start.getDate() - days);
-    setLocalStartDate(start.toISOString().split('T')[0]);
-    setLocalEndDate(end.toISOString().split('T')[0]);
+    setLocalStartDate(toDateInputValue(start));
+    setLocalEndDate(toDateInputValue(end));
+    writeBrowserDateRange(start, end);
     onDateChange(start, end);
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4 rounded border border-cyan-400/15 bg-[#0B2440] p-4 shadow-[0_14px_35px_rgba(0,0,0,0.24)]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Data Inicial</label>
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-cyan-100/70">Data Inicial</label>
           <input
             type="date"
             value={localStartDate}
             onChange={(e) => setLocalStartDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border border-cyan-400/20 bg-[#07182D] px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Data Final</label>
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-cyan-100/70">Data Final</label>
           <input
             type="date"
             value={localEndDate}
             onChange={(e) => setLocalEndDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border border-cyan-400/20 bg-[#07182D] px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
           />
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => handlePreset(7)}
-          className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-        >
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => handlePreset(7)} className="rounded bg-white/10 px-3 py-2 text-sm text-cyan-50 transition-colors hover:bg-white/15">
           Últimos 7 dias
         </button>
-        <button
-          onClick={() => handlePreset(30)}
-          className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-        >
+        <button onClick={() => handlePreset(30)} className="rounded bg-white/10 px-3 py-2 text-sm text-cyan-50 transition-colors hover:bg-white/15">
           Últimos 30 dias
         </button>
-        <button
-          onClick={() => handlePreset(90)}
-          className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-        >
+        <button onClick={() => handlePreset(90)} className="rounded bg-white/10 px-3 py-2 text-sm text-cyan-50 transition-colors hover:bg-white/15">
           Últimos 90 dias
         </button>
-        <button
-          onClick={handleApply}
-          className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors ml-auto"
-        >
+        <button onClick={handleApply} className="ml-auto rounded bg-emerald-400 px-4 py-2 text-sm font-bold text-[#061427] transition-colors hover:bg-emerald-300">
           Aplicar
         </button>
       </div>

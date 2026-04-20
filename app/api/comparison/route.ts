@@ -1,67 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSalesByDateRange } from '@/lib/db';
-import { ComparisonData } from '@/types';
+import { filterSalesByDateRange, getGoogleSheetsData, parseSalesData } from '@/lib/google-sheets';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
+    const spreadsheetId = process.env.GOOGLE_SHEETS_CORPORATE_ID;
+    const sheetGid = process.env.GOOGLE_SHEETS_CORPORATE_GID;
+    const apiKey = process.env.GOOGLE_SHEETS_CORPORATE_API_KEY;
 
-    const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    const startDate = startDateParam
-      ? new Date(startDateParam)
+    if (!spreadsheetId || !sheetGid || !apiKey) {
+      return NextResponse.json({ error: 'Google Sheets configuration missing' }, { status: 400 });
+    }
+
+    const { headers, data } = await getGoogleSheetsData(spreadsheetId, sheetGid, apiKey);
+    const allSales = parseSalesData(data, headers);
+
+    const requestedEndDate = req.nextUrl.searchParams.get('endDate');
+    const requestedStartDate = req.nextUrl.searchParams.get('startDate');
+    const endDate = requestedEndDate ? parseLocalDate(requestedEndDate) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+    const startDate = requestedStartDate
+      ? parseLocalDate(requestedStartDate)
       : new Date(endDate.getFullYear(), endDate.getMonth() - 1, endDate.getDate());
+    const periodLengthMs = Math.max(86400000, endDate.getTime() - startDate.getTime());
+    const previousEndDate = new Date(startDate.getTime() - 1);
+    const previousStartDate = new Date(previousEndDate.getTime() - periodLengthMs);
 
-    // Calculate period length in days
-    const periodLength = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const currentSales = filterSalesByDateRange(
+      allSales,
+      toDateKey(startDate),
+      toDateKey(endDate)
+    );
+    const previousSales = filterSalesByDateRange(
+      allSales,
+      toDateKey(previousStartDate),
+      toDateKey(previousEndDate)
+    );
 
-    // Previous period
-    const previousEndDate = new Date(startDate);
-    previousEndDate.setDate(previousEndDate.getDate() - 1);
-    const previousStartDate = new Date(previousEndDate);
-    previousStartDate.setDate(previousStartDate.getDate() - periodLength);
+    const metrics = (items: typeof allSales) => {
+      const totalSales = items.length;
+      const totalRevenue = items.reduce((sum, sale) => sum + sale.value, 0);
+      const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // Get sales for both periods
-    const currentSales = await getSalesByDateRange(startDate, endDate);
-    const previousSales = await getSalesByDateRange(previousStartDate, previousEndDate);
-
-    // Calculate metrics
-    const currentTotalSales = currentSales.length;
-    const currentTotalRevenue = currentSales.reduce((sum, s) => sum + s.amount, 0);
-    const currentAvgTicket = currentTotalSales > 0 ? currentTotalRevenue / currentTotalSales : 0;
-
-    const previousTotalSales = previousSales.length;
-    const previousTotalRevenue = previousSales.reduce((sum, s) => sum + s.amount, 0);
-    const previousAvgTicket = previousTotalSales > 0 ? previousTotalRevenue / previousTotalSales : 0;
-
-    // Calculate growth
-    const salesGrowth = previousTotalSales > 0 ? ((currentTotalSales - previousTotalSales) / previousTotalSales) * 100 : currentTotalSales > 0 ? 100 : 0;
-    const revenueGrowth = previousTotalRevenue > 0 ? ((currentTotalRevenue - previousTotalRevenue) / previousTotalRevenue) * 100 : currentTotalRevenue > 0 ? 100 : 0;
-    const avgTicketGrowth = previousAvgTicket > 0 ? ((currentAvgTicket - previousAvgTicket) / previousAvgTicket) * 100 : currentAvgTicket > 0 ? 100 : 0;
-
-    const response: ComparisonData = {
-      period: `${startDate.toISOString().split('T')[0]} a ${endDate.toISOString().split('T')[0]}`,
-      previousPeriod: {
-        totalSales: previousTotalSales,
-        totalRevenue: Math.round(previousTotalRevenue * 100) / 100,
-        avgTicket: Math.round(previousAvgTicket * 100) / 100,
-      },
-      currentPeriod: {
-        totalSales: currentTotalSales,
-        totalRevenue: Math.round(currentTotalRevenue * 100) / 100,
-        avgTicket: Math.round(currentAvgTicket * 100) / 100,
-      },
-      growth: {
-        salesGrowth: Math.round(salesGrowth * 100) / 100,
-        revenueGrowth: Math.round(revenueGrowth * 100) / 100,
-        avgTicketGrowth: Math.round(avgTicketGrowth * 100) / 100,
-      },
+      return {
+        totalSales,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        avgTicket: Number(avgTicket.toFixed(2)),
+      };
     };
 
-    return NextResponse.json(response);
+    const previousPeriod = metrics(previousSales);
+    const currentPeriod = metrics(currentSales);
+    const growth = (current: number, previous: number) =>
+      previous > 0 ? Number((((current - previous) / previous) * 100).toFixed(2)) : current > 0 ? 100 : 0;
+
+    return NextResponse.json({
+      period: `${toDateKey(startDate)} a ${toDateKey(endDate)}`,
+      currentPeriodRange: {
+        startDate: toDateKey(startDate),
+        endDate: toDateKey(endDate),
+        label: formatDateRange(startDate, endDate),
+      },
+      previousPeriodRange: {
+        startDate: toDateKey(previousStartDate),
+        endDate: toDateKey(previousEndDate),
+        label: formatDateRange(previousStartDate, previousEndDate),
+      },
+      previousPeriod,
+      currentPeriod,
+      growth: {
+        salesGrowth: growth(currentPeriod.totalSales, previousPeriod.totalSales),
+        revenueGrowth: growth(currentPeriod.totalRevenue, previousPeriod.totalRevenue),
+        avgTicketGrowth: growth(currentPeriod.avgTicket, previousPeriod.avgTicket),
+      },
+      chartData: [
+        { name: 'Vendas', anterior: previousPeriod.totalSales, atual: currentPeriod.totalSales },
+        { name: 'Receita', anterior: previousPeriod.totalRevenue, atual: currentPeriod.totalRevenue },
+        { name: 'Ticket médio', anterior: previousPeriod.avgTicket, atual: currentPeriod.avgTicket },
+      ],
+    });
   } catch (error) {
     console.error('Comparison API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch comparison data' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch comparison data', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
+}
+
+function parseLocalDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateRange(startDate: Date, endDate: Date) {
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+  return `${formatter.format(startDate)} a ${formatter.format(endDate)}`;
 }

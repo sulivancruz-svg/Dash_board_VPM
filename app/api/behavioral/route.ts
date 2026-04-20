@@ -1,66 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSalesByDateRange } from '@/lib/db';
-import { BehavioralData } from '@/types';
+import { filterSalesByDateRange, getGoogleSheetsData, parseSalesData } from '@/lib/google-sheets';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
+    const spreadsheetId = process.env.GOOGLE_SHEETS_CORPORATE_ID;
+    const sheetGid = process.env.GOOGLE_SHEETS_CORPORATE_GID;
+    const apiKey = process.env.GOOGLE_SHEETS_CORPORATE_API_KEY;
 
-    const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    const startDate = startDateParam
-      ? new Date(startDateParam)
-      : new Date(endDate.getFullYear(), endDate.getMonth() - 1, endDate.getDate());
-
-    // Get all sales for the period
-    const sales = await getSalesByDateRange(startDate, endDate);
-
-    // Group by hour of day
-    const hourlyAgg: { [key: number]: { sales: number; amount: number } } = {};
-
-    for (let i = 0; i < 24; i++) {
-      hourlyAgg[i] = { sales: 0, amount: 0 };
+    if (!spreadsheetId || !sheetGid || !apiKey) {
+      return NextResponse.json({ error: 'Google Sheets configuration missing' }, { status: 400 });
     }
 
-    for (const sale of sales) {
-      const hour = new Date(sale.date).getHours();
-      hourlyAgg[hour].sales += 1;
-      hourlyAgg[hour].amount += sale.amount;
-    }
+    const { headers, data } = await getGoogleSheetsData(spreadsheetId, sheetGid, apiKey);
+    const sales = filterSalesByDateRange(
+      parseSalesData(data, headers),
+      req.nextUrl.searchParams.get('startDate'),
+      req.nextUrl.searchParams.get('endDate')
+    );
 
-    // Group by date
-    const dateAgg: { [key: string]: { sales: number; amount: number } } = {};
+    const customerProfiles = sales.reduce<Record<string, number>>((acc, sale) => {
+      acc[sale.client] = (acc[sale.client] || 0) + 1;
+      return acc;
+    }, {});
 
-    for (const sale of sales) {
-      const dateKey = sale.date.toISOString().split('T')[0];
-      if (!dateAgg[dateKey]) {
-        dateAgg[dateKey] = { sales: 0, amount: 0 };
+    const salesByDateMap = sales.reduce<Record<string, { sales: number; revenue: number }>>((acc, sale) => {
+      const dateKey = sale.date.split('T')[0];
+      if (!acc[dateKey]) {
+        acc[dateKey] = { sales: 0, revenue: 0 };
       }
-      dateAgg[dateKey].sales += 1;
-      dateAgg[dateKey].amount += sale.amount;
-    }
+      acc[dateKey].sales++;
+      acc[dateKey].revenue += sale.value;
+      return acc;
+    }, {});
 
-    // Combine data - hourly pattern across all days
-    const behavioralData: BehavioralData[] = [];
-
-    for (let hour = 0; hour < 24; hour++) {
-      const avgSales = Math.ceil(hourlyAgg[hour].sales / Math.max(1, Object.keys(dateAgg).length));
-      const avgRevenue = hourlyAgg[hour].amount / Math.max(1, Object.keys(dateAgg).length);
-      const avgTicket = avgSales > 0 ? avgRevenue / avgSales : 0;
-
-      behavioralData.push({
-        date: new Date().toISOString().split('T')[0],
-        hour,
-        salesCount: avgSales,
-        revenue: Math.round(avgRevenue * 100) / 100,
-        avgTicket: Math.round(avgTicket * 100) / 100,
-      });
-    }
-
-    return NextResponse.json(behavioralData);
+    return NextResponse.json({
+      totalSales: sales.length,
+      avgAdvanceDays:
+        sales.length > 0 ? Number((sales.reduce((sum, sale) => sum + sale.advanceDays, 0) / sales.length).toFixed(1)) : 0,
+      bookingPatterns: [
+        { name: '0-7 dias', sales: sales.filter((sale) => sale.advanceDays >= 0 && sale.advanceDays <= 7).length },
+        { name: '8-14 dias', sales: sales.filter((sale) => sale.advanceDays >= 8 && sale.advanceDays <= 14).length },
+        { name: '15-30 dias', sales: sales.filter((sale) => sale.advanceDays >= 15 && sale.advanceDays <= 30).length },
+        { name: '30+ dias', sales: sales.filter((sale) => sale.advanceDays > 30).length },
+      ],
+      customerProfiles: [
+        { name: 'Alta recorrência (10+)', clients: Object.values(customerProfiles).filter((count) => count >= 10).length },
+        { name: 'Média (5-9)', clients: Object.values(customerProfiles).filter((count) => count >= 5 && count < 10).length },
+        { name: 'Baixa (1-4)', clients: Object.values(customerProfiles).filter((count) => count < 5).length },
+      ],
+      salesByDate: Object.entries(salesByDateMap)
+        .map(([date, value]) => ({
+          date,
+          sales: value.sales,
+          revenue: Number(value.revenue.toFixed(2)),
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    });
   } catch (error) {
     console.error('Behavioral API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch behavioral data' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch behavioral data', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }

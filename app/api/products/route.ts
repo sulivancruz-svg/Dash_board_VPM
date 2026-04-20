@@ -1,48 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getSalesAggregationByProduct,
-  getSalesByDateRange,
-} from '@/lib/db';
-import { ProductsData } from '@/types';
+import { filterSalesByDateRange, getGoogleSheetsData, parseSalesData } from '@/lib/google-sheets';
+
+// Skip validation during build
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
+    const spreadsheetId = process.env.GOOGLE_SHEETS_CORPORATE_ID;
+    const sheetGid = process.env.GOOGLE_SHEETS_CORPORATE_GID;
+    const apiKey = process.env.GOOGLE_SHEETS_CORPORATE_API_KEY;
 
-    const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    const startDate = startDateParam
-      ? new Date(startDateParam)
-      : new Date(endDate.getFullYear(), endDate.getMonth() - 1, endDate.getDate());
+    if (!spreadsheetId || !sheetGid || !apiKey) {
+      return NextResponse.json(
+        { error: 'Google Sheets configuration missing' },
+        { status: 400 }
+      );
+    }
 
-    // Get all sales for the period
-    const sales = await getSalesByDateRange(startDate, endDate);
-    const productAgg = await getSalesAggregationByProduct(startDate, endDate);
+    // Fetch data from Google Sheets
+    const { headers, data } = await getGoogleSheetsData(spreadsheetId, sheetGid, apiKey);
+    const sales = filterSalesByDateRange(
+      parseSalesData(data, headers),
+      req.nextUrl.searchParams.get('startDate'),
+      req.nextUrl.searchParams.get('endDate')
+    );
 
-    // Calculate product data
-    const productsData: ProductsData[] = productAgg.map((product) => {
-      const productSales = sales.filter((s) => s.product === product.name);
-      const lastSale = productSales.length > 0 ? new Date(Math.max(...productSales.map((s) => new Date(s.date).getTime()))) : endDate;
+    // Group by product
+    const productMap = sales.reduce((acc: Record<string, any>, sale) => {
+      if (!acc[sale.product]) {
+        acc[sale.product] = {
+          name: sale.product,
+          totalSales: 0,
+          totalRevenue: 0,
+          unitsSold: 0,
+          lastSaleDate: new Date(0),
+        };
+      }
+      acc[sale.product].totalSales++;
+      acc[sale.product].totalRevenue += sale.value;
+      acc[sale.product].unitsSold++;
+      const saleDate = new Date(sale.date);
+      if (saleDate > acc[sale.product].lastSaleDate) {
+        acc[sale.product].lastSaleDate = saleDate;
+      }
+      return acc;
+    }, {});
 
-      return {
-        id: product.name,
-        name: product.name,
-        totalSales: product.sales,
-        totalRevenue: product.amount,
-        avgPrice: product.sales > 0 ? product.amount / product.sales : 0,
-        lastSaleDate: lastSale,
-        unitsSold: product.sales,
+    // Convert to array and sort by revenue
+    const productsData = Object.values(productMap)
+      .map((p: any) => ({
+        id: p.name,
+        name: p.name,
+        totalSales: p.totalSales,
+        totalRevenue: parseFloat(p.totalRevenue.toFixed(2)),
+        avgPrice: p.totalSales > 0 ? parseFloat((p.totalRevenue / p.totalSales).toFixed(2)) : 0,
+        lastSaleDate: p.lastSaleDate.toISOString(),
+        unitsSold: p.unitsSold,
         status: 'ACTIVE',
-      };
-    });
-
-    // Sort by revenue descending
-    productsData.sort((a, b) => b.totalRevenue - a.totalRevenue);
+      }))
+      .sort((a: any, b: any) => b.totalRevenue - a.totalRevenue);
 
     return NextResponse.json(productsData);
   } catch (error) {
     console.error('Products API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch products data' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch products data', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }

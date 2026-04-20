@@ -1,21 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BarChartComponent } from '@/components/BarChartComponent';
 import { KpiCard } from '@/components/KpiCard';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { formatCurrency, formatPercentage } from '@/lib/format';
+import { useSharedDateRange } from '@/lib/use-shared-date-range';
 import { ComparisonData } from '@/types';
 
 export default function ComparisonPage() {
   const [data, setData] = useState<ComparisonData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    return d;
-  });
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const { startDate, endDate, setDateRange } = useSharedDateRange();
 
   const fetchData = async (start: Date, end: Date) => {
     try {
@@ -25,8 +22,12 @@ export default function ComparisonPage() {
         endDate: end.toISOString().split('T')[0],
       });
       const response = await fetch(`/api/comparison?${params}`);
-      if (!response.ok) throw new Error('Falha ao carregar dados');
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.details || result?.error || 'Falha ao carregar dados');
+      }
+
       setData(result);
       setError(null);
     } catch (err) {
@@ -40,107 +41,98 @@ export default function ComparisonPage() {
     fetchData(startDate, endDate);
   }, [startDate, endDate]);
 
-  const handleDateChange = (newStart: Date, newEnd: Date) => {
-    setStartDate(newStart);
-    setEndDate(newEnd);
-  };
+  const charts = useMemo(() => {
+    if (!data) return null;
+
+    return {
+      sales: [
+        { name: 'Anterior', total: data.previousPeriod.totalSales },
+        { name: 'Atual', total: data.currentPeriod.totalSales },
+      ],
+      revenue: [
+        { name: 'Anterior', total: data.previousPeriod.totalRevenue },
+        { name: 'Atual', total: data.currentPeriod.totalRevenue },
+      ],
+      ticket: [
+        { name: 'Anterior', total: data.previousPeriod.avgTicket },
+        { name: 'Atual', total: data.currentPeriod.avgTicket },
+      ],
+    };
+  }, [data]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Comparação de Períodos</h1>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Evolução de período</p>
+        <h1 className="mt-1 text-3xl font-bold text-white">Comparação</h1>
+      </div>
 
-      <DateRangePicker onDateChange={handleDateChange} defaultStartDate={startDate} defaultEndDate={endDate} />
+      <DateRangePicker onDateChange={setDateRange} defaultStartDate={startDate} defaultEndDate={endDate} />
 
-      {loading && <div className="text-center py-8 text-gray-500">Carregando dados...</div>}
+      {loading && <div className="text-center py-8 text-cyan-100/70">Carregando dados...</div>}
+      {error && <div className="rounded border border-rose-400/30 bg-rose-500/10 p-4 text-rose-100">{error}</div>}
 
-      {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">{error}</div>}
-
-      {data && (
+      {data && charts && !loading && !error && (
         <>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Período Analisado: {data.period}</h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500 font-medium">Período Anterior</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">{data.previousPeriod.totalSales} vendas</p>
+          <div className="rounded border border-cyan-400/15 bg-[#0B2440] p-6 shadow-[0_14px_35px_rgba(0,0,0,0.24)]">
+            <h2 className="text-xl font-semibold text-white">Atual vs anterior</h2>
+            <p className="mt-1 text-sm text-cyan-100/60">
+              Compara o período selecionado com o intervalo imediatamente anterior, usando a mesma quantidade de dias.
+            </p>
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded border border-slate-500/30 bg-slate-950/25 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Anterior</p>
+                <p className="mt-2 text-2xl font-bold text-white">{data.previousPeriodRange?.label || 'Não informado'}</p>
               </div>
-              <div>
-                <p className="text-gray-500 font-medium">Período Atual</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">{data.currentPeriod.totalSales} vendas</p>
+              <div className="rounded border border-emerald-300/30 bg-emerald-400/10 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">Atual</p>
+                <p className="mt-2 text-2xl font-bold text-white">{data.currentPeriodRange?.label || data.period}</p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <KpiCard
-              title="Crescimento de Vendas"
+              title="Vendas"
               value={formatPercentage(data.growth.salesGrowth)}
-              subtitle={`De ${data.previousPeriod.totalSales} para ${data.currentPeriod.totalSales}`}
-              trend={{
-                value: Math.abs(data.growth.salesGrowth),
-                direction: data.growth.salesGrowth >= 0 ? 'up' : 'down',
-              }}
+              subtitle={`${data.previousPeriod.totalSales} anterior | ${data.currentPeriod.totalSales} atual`}
+              trend={{ value: Math.abs(data.growth.salesGrowth), direction: data.growth.salesGrowth >= 0 ? 'up' : 'down' }}
             />
             <KpiCard
-              title="Crescimento de Receita"
+              title="Receita"
               value={formatPercentage(data.growth.revenueGrowth)}
-              subtitle={`De ${formatCurrency(data.previousPeriod.totalRevenue)} para ${formatCurrency(
-                data.currentPeriod.totalRevenue
-              )}`}
-              trend={{
-                value: Math.abs(data.growth.revenueGrowth),
-                direction: data.growth.revenueGrowth >= 0 ? 'up' : 'down',
-              }}
+              subtitle={`${formatCurrency(data.previousPeriod.totalRevenue)} anterior | ${formatCurrency(data.currentPeriod.totalRevenue)} atual`}
+              trend={{ value: Math.abs(data.growth.revenueGrowth), direction: data.growth.revenueGrowth >= 0 ? 'up' : 'down' }}
             />
             <KpiCard
-              title="Crescimento do Ticket Médio"
+              title="Ticket Médio"
               value={formatPercentage(data.growth.avgTicketGrowth)}
-              subtitle={`De ${formatCurrency(data.previousPeriod.avgTicket)} para ${formatCurrency(
-                data.currentPeriod.avgTicket
-              )}`}
-              trend={{
-                value: Math.abs(data.growth.avgTicketGrowth),
-                direction: data.growth.avgTicketGrowth >= 0 ? 'up' : 'down',
-              }}
+              subtitle={`${formatCurrency(data.previousPeriod.avgTicket)} anterior | ${formatCurrency(data.currentPeriod.avgTicket)} atual`}
+              trend={{ value: Math.abs(data.growth.avgTicketGrowth), direction: data.growth.avgTicketGrowth >= 0 ? 'up' : 'down' }}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Período Anterior</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Vendas:</span>
-                  <span className="font-medium">{data.previousPeriod.totalSales}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Receita:</span>
-                  <span className="font-medium">{formatCurrency(data.previousPeriod.totalRevenue)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Ticket Médio:</span>
-                  <span className="font-medium">{formatCurrency(data.previousPeriod.avgTicket)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Período Atual</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Vendas:</span>
-                  <span className="font-medium">{data.currentPeriod.totalSales}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Receita:</span>
-                  <span className="font-medium">{formatCurrency(data.currentPeriod.totalRevenue)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Ticket Médio:</span>
-                  <span className="font-medium">{formatCurrency(data.currentPeriod.avgTicket)}</span>
-                </div>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <BarChartComponent
+              data={charts.sales}
+              title="Vendas"
+              bars={[{ key: 'total', label: 'Total de vendas', color: '#38BDF8' }]}
+              height={320}
+            />
+            <BarChartComponent
+              data={charts.revenue}
+              title="Receita"
+              bars={[{ key: 'total', label: 'Receita', color: '#10B981' }]}
+              formatYAxis="currency"
+              height={320}
+            />
+            <BarChartComponent
+              data={charts.ticket}
+              title="Ticket Médio"
+              bars={[{ key: 'total', label: 'Ticket médio', color: '#FBBF24' }]}
+              formatYAxis="currency"
+              height={320}
+            />
           </div>
         </>
       )}

@@ -41,3 +41,12 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# local agent/session artifacts
+.claude/
+*.log
+test-api.js
+/app/api/test/
+
+# legacy duplicate app tree excluded from build
+/src/

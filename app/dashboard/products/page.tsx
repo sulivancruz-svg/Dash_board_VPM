@@ -1,21 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BarChartComponent } from '@/components/BarChartComponent';
 import { DataTable } from '@/components/DataTable';
 import { DateRangePicker } from '@/components/DateRangePicker';
+import { KpiCard } from '@/components/KpiCard';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { useSharedDateRange } from '@/lib/use-shared-date-range';
 import { ProductsData } from '@/types';
 
 export default function ProductsPage() {
   const [data, setData] = useState<ProductsData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    return d;
-  });
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const { startDate, endDate, setDateRange } = useSharedDateRange();
 
   const fetchData = async (start: Date, end: Date) => {
     try {
@@ -25,8 +23,12 @@ export default function ProductsPage() {
         endDate: end.toISOString().split('T')[0],
       });
       const response = await fetch(`/api/products?${params}`);
-      if (!response.ok) throw new Error('Falha ao carregar dados');
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.details || result?.error || 'Falha ao carregar dados');
+      }
+
       setData(result);
       setError(null);
     } catch (err) {
@@ -40,10 +42,26 @@ export default function ProductsPage() {
     fetchData(startDate, endDate);
   }, [startDate, endDate]);
 
-  const handleDateChange = (newStart: Date, newEnd: Date) => {
-    setStartDate(newStart);
-    setEndDate(newEnd);
-  };
+  const summary = useMemo(() => {
+    const totalRevenue = data.reduce((sum, product) => sum + product.totalRevenue, 0);
+    const totalSales = data.reduce((sum, product) => sum + product.totalSales, 0);
+    const unitsSold = data.reduce((sum, product) => sum + product.unitsSold, 0);
+    const topProduct = data[0];
+
+    return {
+      totalRevenue,
+      totalSales,
+      unitsSold,
+      avgPrice: totalSales > 0 ? totalRevenue / totalSales : 0,
+      topProduct,
+    };
+  }, [data]);
+
+  const chartData = data.slice(0, 10).map((product) => ({
+    name: product.name.length > 22 ? `${product.name.slice(0, 22)}...` : product.name,
+    faturamento: product.totalRevenue,
+    vendas: product.totalSales,
+  }));
 
   const columns = [
     { key: 'name' as const, label: 'Nome do Produto', width: '30%' },
@@ -76,15 +94,49 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Produtos</h1>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Mix de vendas</p>
+        <h1 className="mt-1 text-3xl font-bold text-white">Produtos</h1>
+      </div>
 
-      <DateRangePicker onDateChange={handleDateChange} defaultStartDate={startDate} defaultEndDate={endDate} />
+      <DateRangePicker onDateChange={setDateRange} defaultStartDate={startDate} defaultEndDate={endDate} />
 
-      {loading && <div className="text-center py-8 text-gray-500">Carregando dados...</div>}
+      {loading && <div className="text-center py-8 text-cyan-100/70">Carregando dados...</div>}
+      {error && <div className="rounded border border-rose-400/30 bg-rose-500/10 p-4 text-rose-100">{error}</div>}
 
-      {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">{error}</div>}
+      {!loading && !error && (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+            <KpiCard title="Produtos" value={data.length} subtitle="Itens vendidos" />
+            <KpiCard title="Vendas" value={summary.totalSales} subtitle={`${summary.unitsSold} unidades`} />
+            <KpiCard title="Faturamento" value={formatCurrency(summary.totalRevenue)} subtitle={`Média: ${formatCurrency(summary.avgPrice)}`} />
+            <KpiCard
+              title="Produto Líder"
+              value={summary.topProduct?.name || '-'}
+              subtitle={summary.topProduct ? formatCurrency(summary.topProduct.totalRevenue) : 'Sem dados'}
+              className="md:col-span-2"
+            />
+          </div>
 
-      {!loading && <DataTable data={data} columns={columns} title={`Total: ${data.length} produtos`} />}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <BarChartComponent
+              data={chartData}
+              title="Top produtos por faturamento"
+              bars={[{ key: 'faturamento', label: 'Faturamento', color: '#10B981' }]}
+              formatYAxis="currency"
+              height={350}
+            />
+            <BarChartComponent
+              data={chartData}
+              title="Top produtos por volume"
+              bars={[{ key: 'vendas', label: 'Vendas', color: '#38BDF8' }]}
+              height={350}
+            />
+          </div>
+
+          <DataTable data={data} columns={columns} title={`Total: ${data.length} produtos`} />
+        </>
+      )}
     </div>
   );
 }

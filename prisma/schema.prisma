@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum SaleStatus {
@@ -69,4 +68,13 @@ model CorporateSalesSnapshot {
 
   @@index([date])
   @@map("corporate_sales_snapshots")
+}
+
+model CorporateSettings {
+  id                String   @id @default(cuid())
+  googleSheetsId    String
+  googleSheetsGid   String
+  updatedAt         DateTime @updatedAt
+
+  @@map("corporate_settings")
 }
