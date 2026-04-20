@@ -2,12 +2,13 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { DATE_RANGE_EVENT, withCurrentDateRange } from '@/lib/date-range';
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const [queryVersion, setQueryVersion] = useState(-1);
 
   useEffect(() => {
@@ -32,6 +33,12 @@ export function Navigation() {
     { href: '/dashboard/raw', label: 'Dados Brutos' },
     { href: '/dashboard/settings', label: 'Configurações' },
   ];
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.replace('/login');
+    router.refresh();
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-cyan-400/20 bg-[#061427]/95 text-white backdrop-blur">
@@ -72,6 +79,13 @@ export function Navigation() {
                 </Link>
               );
             })}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="whitespace-nowrap rounded border border-cyan-400/25 px-3 py-2 text-sm font-medium text-cyan-100/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              Sair
+            </button>
           </div>
         </div>
       </div>
