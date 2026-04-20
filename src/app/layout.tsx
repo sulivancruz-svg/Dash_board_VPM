@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
+
+if (typeof window === 'undefined') {
+  import('@/jobs/init').then(m => m.initializeJobs()).catch(err => console.error('Job init error:', err));
+}
 import { SidebarBrand } from '@/components/sidebar-brand';
 import { SessionProviderWrapper } from '@/components/session-provider-wrapper';
 

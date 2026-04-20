@@ -1,19 +1,11 @@
-// Placeholder queue implementation
-// In production, replace with actual BullMQ when Redis is available
+// src/lib/queue.ts
+import Queue from 'bull';
+import { env } from '@/env';
 
-interface QueueJob {
-  id: string;
-}
-
-class MockQueue {
-  private jobCounter = 0;
-
-  async add(data: any, options?: any): Promise<QueueJob> {
-    this.jobCounter++;
-    const jobId = `job-${this.jobCounter}-${Date.now()}`;
-    console.log('[queue] Mock job added:', jobId, { data, options });
-    return { id: jobId };
-  }
-}
-
-export const corporateSyncQueue = new MockQueue();
+export const corporateSyncQueue = new Queue('corporate-sync', {
+  redis: {
+    host: new URL(env.REDIS_URL).hostname,
+    port: parseInt(new URL(env.REDIS_URL).port || '6379'),
+    password: new URL(env.REDIS_URL).password,
+  },
+});
