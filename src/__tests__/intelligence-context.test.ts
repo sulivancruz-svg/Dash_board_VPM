@@ -17,7 +17,7 @@ const baseData = {
     deals: 18,
     ticketMedio: 13888,
   },
-  googleProjection: { hasEnoughData: true, roiHistorico: 3.2, r2: 0.87 },
+  googleProjection: { hasEnoughData: true, roasHistorico: 3.2, r2: 0.87 },
   anomalies: {
     totalAlerts: 1,
     alerts: [{ metric: 'Receita Mensal', severity: 'warning', message: 'Receita (fev/2026) está 22% abaixo da média histórica', zScore: -1.4 }],
@@ -51,5 +51,11 @@ describe('buildIntelligencePrompt', () => {
   it('não menciona SDR', () => {
     const prompt = buildIntelligencePrompt(baseData);
     expect(prompt).not.toContain('SDR');
+  });
+
+  it('inclui a seção de projeção Google quando hasEnoughData é true', () => {
+    const prompt = buildIntelligencePrompt(baseData);
+    expect(prompt).toContain('Projeção Google Ads');
+    expect(prompt).toContain('3.2x');
   });
 });
