@@ -71,7 +71,7 @@ export function IntelligenceChat({ data }: Props) {
 
   const stop = () => {
     abortRef.current?.abort();
-    setLoading(false);
+    // loading é resetado pelo finally de submit
   };
 
   return (
