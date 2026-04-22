@@ -30,7 +30,7 @@ export interface IntelligenceContextData {
   };
   googleProjection: {
     hasEnoughData: boolean;
-    roiHistorico: number;
+    roasHistorico: number;
     r2: number;
   };
   anomalies: {
@@ -78,7 +78,7 @@ export function buildIntelligencePrompt(data: IntelligenceContextData): string {
   // Projeção Google
   if (data.googleProjection.hasEnoughData) {
     lines.push('## Projeção Google Ads');
-    lines.push(`- ROAS histórico Google: ${data.googleProjection.roiHistorico}x`);
+    lines.push(`- ROAS histórico Google: ${data.googleProjection.roasHistorico}x`);
     lines.push(`- Confiança da regressão (R²): ${data.googleProjection.r2}`);
     lines.push('');
   }
