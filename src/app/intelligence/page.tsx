@@ -11,6 +11,7 @@ import type {
 } from '@/app/api/data/intelligence/route';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
+import { IntelligenceChat } from '@/components/intelligence-chat';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -633,8 +634,12 @@ export default function IntelligencePage() {
 
       {!loading && !error && data?.hasData && (
         <>
+          <IntelligenceChat data={data} />
           <ChannelRankingSection    channels={data.channelRanking} />
           <TemporalSection          channels={data.temporalByChannel} allMonthKeys={data.allMonthKeys} />
+          <GoogleProjectionSection  proj={data.googleProjection} />
+          <EfficiencySection        scores={data.efficiencyScores} />
+          <AnomalySection           anomalies={data.anomalies} />
         </>
       )}
     </div>
