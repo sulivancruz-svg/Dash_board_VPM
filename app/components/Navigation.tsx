@@ -31,6 +31,7 @@ export function Navigation() {
     { href: '/dashboard/behavioral', label: 'Comportamento' },
     { href: '/dashboard/comparison', label: 'Comparação' },
     { href: '/dashboard/raw', label: 'Dados Brutos' },
+    { href: '/dashboard/insights', label: 'Inteligência' },
     { href: '/dashboard/settings', label: 'Configurações' },
   ];
 
