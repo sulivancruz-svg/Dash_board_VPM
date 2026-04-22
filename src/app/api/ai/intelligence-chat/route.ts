@@ -10,10 +10,6 @@ import type { GoogleAdsStoredData } from '@/lib/google-ads-store';
 
 export const dynamic = 'force-dynamic';
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -23,9 +19,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Pergunta vazia' }, { status: 400 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY não configurada' }, { status: 500 });
     }
+
+    const client = new Anthropic({ apiKey });
 
     // Busca dados internamente — histórico completo, sem filtro de data
     const [pipedriveData, googleAdsData, metaToken] = await Promise.all([
@@ -116,7 +115,8 @@ export async function POST(req: NextRequest) {
     const anomalyAlerts: IntelligenceContextData['anomalies']['alerts'] = [];
     if (monthly.length >= 3) {
       const receitas = monthly.map(m => m.receita);
-      const mean = receitas.reduce((a, b) => a + b, 0) / receitas.length;
+      const historyReceitas = receitas.slice(0, -1); // exclui o último mês do cálculo da média
+      const mean = historyReceitas.reduce((a, b) => a + b, 0) / historyReceitas.length;
       const last = receitas[receitas.length - 1];
       const changePct = mean > 0 ? Math.round(((last - mean) / mean) * 100) : 0;
       if (Math.abs(changePct) > 20) {
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     // Chama Claude com streaming
     const stream = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
+      max_tokens: 1500,
       system: systemPrompt,
       messages: [{ role: 'user', content: question }],
       stream: true,
@@ -162,6 +162,8 @@ export async function POST(req: NextRequest) {
               controller.enqueue(encoder.encode(event.delta.text));
             }
           }
+        } catch (e) {
+          controller.error(e);
         } finally {
           controller.close();
         }
