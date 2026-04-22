@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@prisma/client": "^5.7.0",
     "@tanstack/react-query": "^5.25.0",
     "@tanstack/react-table": "^8.13.0",
