@@ -86,10 +86,10 @@ export interface ProjectionPoint {
   receita: number;
 }
 
-export interface GoogleProjection {
+export interface ChannelProjection {
   points: ProjectionPoint[];        // histórico de pares (investimento, receita)
   regression: { a: number; b: number; r2: number };
-  roasHistorico: number;            // faturamento Google / investimento Google (ROAS)
+  roasHistorico: number;            // faturamento atribuído / investimento em anúncios
   forecast: Array<{                 // cenários de simulação
     invest: number;
     receitaEsperada: number;
@@ -97,6 +97,9 @@ export interface GoogleProjection {
   }>;
   hasEnoughData: boolean;
 }
+
+// Mantido para compatibilidade com o type do componente
+export type GoogleProjection = ChannelProjection;
 
 export interface EfficiencyScore {
   canal: string;
@@ -136,7 +139,10 @@ export interface IntelligenceData {
   temporalByChannel: TemporalChannel[];
 
   // 3. Projeção Google
-  googleProjection: GoogleProjection;
+  googleProjection: ChannelProjection;
+
+  // 3b. Projeção Meta
+  metaProjection: ChannelProjection;
 
   // 4. Score de eficiência (apenas paid)
   efficiencyScores: EfficiencyScore[];
@@ -192,6 +198,7 @@ export async function GET(req: NextRequest) {
       channelRanking: [],
       temporalByChannel: [],
       googleProjection: { points: [], regression: { a: 0, b: 0, r2: 0 }, roasHistorico: 0, forecast: [], hasEnoughData: false },
+      metaProjection:   { points: [], regression: { a: 0, b: 0, r2: 0 }, roasHistorico: 0, forecast: [], hasEnoughData: false },
       efficiencyScores: [],
       anomalies: { metrics: [], alerts: [], totalAlerts: 0 },
     };
@@ -390,27 +397,95 @@ export async function GET(req: NextRequest) {
           .reduce((s, d) => s + d.spend, 0)
       : (googleAdsData?.totalSpend ?? 0);
 
-    // Meta: busca investimento via API usando token salvo
+    // Meta: busca investimento total + histórico mensal via API
     let investMeta = 0;
+    const metaMonthlySpend = new Map<string, number>(); // monthKey → spend
+
     if (metaToken?.token && metaToken?.accountId) {
       try {
-        const metaUrl = new URL(`https://graph.facebook.com/v20.0/${metaToken.accountId}/insights`);
-        metaUrl.searchParams.append('access_token', metaToken.token);
-        metaUrl.searchParams.append('fields', 'spend');
+        // Total do período (para efficiency score)
+        const metaTotalUrl = new URL(`https://graph.facebook.com/v20.0/${metaToken.accountId}/insights`);
+        metaTotalUrl.searchParams.append('access_token', metaToken.token);
+        metaTotalUrl.searchParams.append('fields', 'spend');
         if (start && end) {
-          metaUrl.searchParams.append('time_range', JSON.stringify({ since: start, until: end }));
+          metaTotalUrl.searchParams.append('time_range', JSON.stringify({ since: start, until: end }));
         } else {
-          metaUrl.searchParams.append('date_preset', 'last_90d');
+          metaTotalUrl.searchParams.append('date_preset', 'last_90d');
         }
-        const metaRes = await fetch(metaUrl.toString());
-        if (metaRes.ok) {
-          const metaJson = await metaRes.json();
-          investMeta = parseFloat(metaJson.data?.[0]?.spend ?? '0');
+        const metaTotalRes = await fetch(metaTotalUrl.toString());
+        if (metaTotalRes.ok) {
+          const metaTotalJson = await metaTotalRes.json();
+          investMeta = parseFloat(metaTotalJson.data?.[0]?.spend ?? '0');
+        }
+
+        // Histórico mensal (para regressão da projeção) — sempre busca 12 meses
+        const metaMonthUrl = new URL(`https://graph.facebook.com/v20.0/${metaToken.accountId}/insights`);
+        metaMonthUrl.searchParams.append('access_token', metaToken.token);
+        metaMonthUrl.searchParams.append('fields', 'spend,date_start');
+        metaMonthUrl.searchParams.append('time_increment', 'monthly');
+        if (start && end) {
+          metaMonthUrl.searchParams.append('time_range', JSON.stringify({ since: start, until: end }));
+        } else {
+          metaMonthUrl.searchParams.append('date_preset', 'last_90d');
+        }
+        const metaMonthRes = await fetch(metaMonthUrl.toString());
+        if (metaMonthRes.ok) {
+          const metaMonthJson = await metaMonthRes.json();
+          for (const row of metaMonthJson.data ?? []) {
+            const mk = (row.date_start as string).substring(0, 7); // "YYYY-MM"
+            const spend = parseFloat(row.spend ?? '0');
+            if (spend > 0) metaMonthlySpend.set(mk, spend);
+          }
         }
       } catch {
         // ignora falha do Meta
       }
     }
+
+    // Projeção Meta — mesmo método da Google: regressão investimento × faturamento atribuído
+    const metaPipeMonthMap = new Map<string, number>();
+    for (const d of metrics.mondeDeals ?? []) {
+      if (!d.createdDate || !/meta|instagram|facebook|redes?\s*social/i.test(d.canal || '')) continue;
+      const mk = d.createdDate.substring(0, 7);
+      metaPipeMonthMap.set(mk, (metaPipeMonthMap.get(mk) ?? 0) + d.receita);
+    }
+
+    const metaProjPoints: ProjectionPoint[] = [];
+    for (const [mk, spend] of metaMonthlySpend) {
+      const receita = metaPipeMonthMap.get(mk) ?? 0;
+      const [y, m] = mk.split('-').map(Number);
+      metaProjPoints.push({
+        monthKey: mk,
+        label: `${PT_MONTHS[m]}/${y}`,
+        invest: Math.round(spend),
+        receita: Math.round(receita),
+      });
+    }
+    metaProjPoints.sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+    const metaRegression = linearRegression(metaProjPoints.map(p => ({ x: p.invest, y: p.receita })));
+    const totalMetaInvest  = metaProjPoints.reduce((s, p) => s + p.invest, 0);
+    const totalMetaReceita = metaProjPoints.reduce((s, p) => s + p.receita, 0);
+    const metaRoasHistorico = totalMetaInvest > 0
+      ? Math.round((totalMetaReceita / totalMetaInvest) * 100) / 100 : 0;
+    const avgMetaInvest = metaProjPoints.length > 0 ? totalMetaInvest / metaProjPoints.length : 5000;
+    const metaScenarios = [0.5, 1, 1.5, 2, 3].map(mult => {
+      const invest = Math.round(avgMetaInvest * mult);
+      const receitaEsperada = Math.max(0, Math.round(metaRegression.a + metaRegression.b * invest));
+      return { invest, receitaEsperada, roas: invest > 0 ? Math.round((receitaEsperada / invest) * 100) / 100 : 0 };
+    });
+
+    const metaProjection: ChannelProjection = {
+      points: metaProjPoints,
+      regression: {
+        a: Math.round(metaRegression.a),
+        b: Math.round(metaRegression.b * 100) / 100,
+        r2: Math.round(metaRegression.r2 * 100) / 100,
+      },
+      roasHistorico: metaRoasHistorico,
+      forecast: metaScenarios,
+      hasEnoughData: metaProjPoints.length >= 3,
+    };
 
     const efficiencyScores: EfficiencyScore[] = [];
 
@@ -512,6 +587,7 @@ export async function GET(req: NextRequest) {
       channelRanking,
       temporalByChannel,
       googleProjection,
+      metaProjection,
       efficiencyScores,
       anomalies: { metrics: anomalyMetrics, alerts: anomalyAlerts, totalAlerts: anomalyAlerts.length },
     } satisfies IntelligenceData);

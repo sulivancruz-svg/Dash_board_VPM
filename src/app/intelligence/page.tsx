@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import type {
   IntelligenceData, ChannelRanking, TemporalChannel,
-  GoogleProjection, EfficiencyScore, AnomalyMetric,
+  ChannelProjection, EfficiencyScore, AnomalyMetric,
 } from '@/app/api/data/intelligence/route';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { useDashboardDateRange } from '@/lib/use-dashboard-date-range';
@@ -265,30 +265,48 @@ function TemporalSection({ channels, allMonthKeys }: { channels: TemporalChannel
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SEÇÃO 3 — Projeção Google
+// LEGENDA DE METODOLOGIA (compartilhada entre Google e Meta)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
+function ProjectionMethodologyBox({ canal }: { canal: 'Google' | 'Meta' }) {
+  return (
+    <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs text-slate-500">
+      <p className="font-semibold text-slate-600">Como esses números são calculados?</p>
+      <ul className="space-y-1 list-disc list-inside">
+        <li><span className="font-medium text-slate-700">Faturamento atribuído ao {canal}:</span> soma dos deals no Pipedrive cujo canal de origem contém &ldquo;{canal}&rdquo;, filtrado pelo período selecionado.</li>
+        <li><span className="font-medium text-slate-700">Investimento {canal}:</span> gasto real importado da conta {canal} Ads, filtrado pelo mesmo período.</li>
+        <li><span className="font-medium text-slate-700">ROAS:</span> faturamento atribuído ÷ investimento em anúncios. <em>Não inclui</em> salários, agência ou outros custos operacionais — para isso use a margem líquida separadamente.</li>
+        <li><span className="font-medium text-slate-700">Projeção:</span> regressão linear entre investimento mensal e faturamento atribuído no mesmo mês. Quanto maior o R², mais confiável a correlação histórica.</li>
+        <li><span className="font-medium text-slate-700">Limitação:</span> a projeção pressupõe que a relação passada se mantém. Sazonalidade, concorrência e qualidade de criativos não são considerados.</li>
+      </ul>
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEÇÃO 3 — Projeção (Google ou Meta — componente genérico)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function ChannelProjectionSection({ proj, canal }: { proj: ChannelProjection; canal: 'Google' | 'Meta' }) {
   if (!proj.hasEnoughData) {
     return (
       <section>
         <h2 className="text-base font-bold text-slate-800 mb-1">
-          Se eu investir mais no Google, o que acontece?
+          Se eu investir mais no {canal}, o que acontece?
         </h2>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
-          Precisamos de ao menos 3 meses de investimento no Google para calcular a projeção.
+          Precisamos de ao menos 3 meses de investimento no {canal} para calcular a projeção.
         </div>
+        <ProjectionMethodologyBox canal={canal} />
       </section>
     );
   }
 
   const { forecast, roasHistorico, regression, points } = proj;
-  const baseScenario = forecast[1]; // 1x = média histórica
 
   return (
     <section>
       <div className="mb-4">
         <h2 className="text-base font-bold text-slate-800">
-          Se eu investir mais no Google, o que acontece?
+          Se eu investir mais no {canal}, o que acontece?
         </h2>
         <p className="text-xs text-slate-400 mt-0.5">
           Projeção baseada em regressão linear do histórico real
@@ -320,7 +338,7 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
       {/* Cenários */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cenários de investimento</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cenários de investimento {canal}</p>
         </div>
         <table className="w-full">
           <thead className="border-b border-slate-100">
@@ -363,14 +381,16 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
             })}
           </tbody>
         </table>
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
-          <p className="text-xs text-slate-400">
-            ⚠️ Projeção baseada em correlação histórica. Não considera saturação de mercado, sazonalidade ou concorrência.
-          </p>
-        </div>
       </div>
+
+      <ProjectionMethodologyBox canal={canal} />
     </section>
   );
+}
+
+// Alias para compatibilidade com chamada antiga
+function GoogleProjectionSection({ proj }: { proj: ChannelProjection }) {
+  return <ChannelProjectionSection proj={proj} canal="Google" />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -397,6 +417,16 @@ function EfficiencySection({ scores }: { scores: EfficiencyScore[] }) {
         <p className="text-xs text-slate-400 mt-0.5">
           ROAS = faturamento atribuído ÷ investimento em anúncios
         </p>
+      </div>
+
+      <div className="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-500 space-y-1">
+        <p className="font-semibold text-slate-600">Como esses números são calculados?</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li><span className="font-medium text-slate-700">Faturamento:</span> soma dos deals no Pipedrive com canal atribuído a cada plataforma.</li>
+          <li><span className="font-medium text-slate-700">Investimento:</span> gasto real importado diretamente da conta de anúncios.</li>
+          <li><span className="font-medium text-slate-700">ROAS:</span> faturamento ÷ investimento em anúncios. <em>Não considera</em> custos como salário, agência ou outros — esses entram no cálculo de margem, não de ROAS.</li>
+          <li><span className="font-medium text-slate-700">CPA:</span> investimento ÷ número de deals fechados.</li>
+        </ul>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -638,6 +668,7 @@ export default function IntelligencePage() {
           <ChannelRankingSection    channels={data.channelRanking} />
           <TemporalSection          channels={data.temporalByChannel} allMonthKeys={data.allMonthKeys} />
           <GoogleProjectionSection  proj={data.googleProjection} />
+          <ChannelProjectionSection proj={data.metaProjection} canal="Meta" />
           <EfficiencySection        scores={data.efficiencyScores} />
           <AnomalySection           anomalies={data.anomalies} />
         </>
