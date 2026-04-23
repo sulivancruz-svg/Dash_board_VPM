@@ -441,7 +441,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => a.monthKey.localeCompare(b.monthKey));
 
     if (allMonthly.length) {
-      addMetric('Receita Mensal', 'currency',
+      addMetric('Faturamento Mensal', 'currency',
         allMonthly.map(m => ({ monthKey: m.monthKey, label: `${m.month}/${m.year}`, value: m.receita })));
       addMetric('Deals Fechados', 'number',
         allMonthly.map(m => ({ monthKey: m.monthKey, label: `${m.month}/${m.year}`, value: m.deals })));
