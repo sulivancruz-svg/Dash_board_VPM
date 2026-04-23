@@ -89,11 +89,11 @@ export interface ProjectionPoint {
 export interface GoogleProjection {
   points: ProjectionPoint[];        // histórico de pares (investimento, receita)
   regression: { a: number; b: number; r2: number };
-  roiHistorico: number;             // receita / investimento médio histórico
+  roasHistorico: number;            // faturamento Google / investimento Google (ROAS)
   forecast: Array<{                 // cenários de simulação
     invest: number;
     receitaEsperada: number;
-    roi: number;
+    roas: number;
   }>;
   hasEnoughData: boolean;
 }
@@ -103,8 +103,8 @@ export interface EfficiencyScore {
   tipo: 'google' | 'meta';
   investimento: number;
   receita: number;
-  roi: number;             // receita / investimento
-  roiLabel: string;        // "3.2x"
+  roas: number;            // faturamento / investimento em anúncios
+  roasLabel: string;       // "3.2x"
   deals: number;
   ticketMedio: number;
   cpa: number;             // investimento / deals
@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
       allMonthKeys: [],
       channelRanking: [],
       temporalByChannel: [],
-      googleProjection: { points: [], regression: { a: 0, b: 0, r2: 0 }, roiHistorico: 0, forecast: [], hasEnoughData: false },
+      googleProjection: { points: [], regression: { a: 0, b: 0, r2: 0 }, roasHistorico: 0, forecast: [], hasEnoughData: false },
       efficiencyScores: [],
       anomalies: { metrics: [], alerts: [], totalAlerts: 0 },
     };
@@ -298,10 +298,13 @@ export async function GET(req: NextRequest) {
       return monthInRange(mk);
     });
 
-    // Faturamento por mês filtrado pelo período — mesma fonte dos outros cards
+    // Faturamento Google por mês — apenas deals atribuídos a canais Google
+    // (mesma fonte que o card de eficiência, filtrado pelo período)
     const pipeMonthMap = new Map<string, number>();
-    for (const m of metrics.monthly) {
-      pipeMonthMap.set(m.monthKey, m.receita);
+    for (const d of metrics.mondeDeals ?? []) {
+      if (!d.createdDate || !/google/i.test(d.canal || '')) continue;
+      const mk = d.createdDate.substring(0, 7);
+      pipeMonthMap.set(mk, (pipeMonthMap.get(mk) ?? 0) + d.receita);
     }
 
     const projPoints: ProjectionPoint[] = [];
@@ -328,7 +331,7 @@ export async function GET(req: NextRequest) {
     const regression = linearRegression(projPoints.map(p => ({ x: p.invest, y: p.receita })));
     const totalGoogleInvest  = projPoints.reduce((s, p) => s + p.invest, 0);
     const totalGoogleReceita = projPoints.reduce((s, p) => s + p.receita, 0);
-    const roiHistorico       = totalGoogleInvest > 0
+    const roasHistorico = totalGoogleInvest > 0
       ? Math.round((totalGoogleReceita / totalGoogleInvest) * 100) / 100
       : 0;
 
@@ -340,7 +343,7 @@ export async function GET(req: NextRequest) {
       return {
         invest,
         receitaEsperada,
-        roi: invest > 0 ? Math.round((receitaEsperada / invest) * 100) / 100 : 0,
+        roas: invest > 0 ? Math.round((receitaEsperada / invest) * 100) / 100 : 0,
       };
     });
 
@@ -351,7 +354,7 @@ export async function GET(req: NextRequest) {
         b:  Math.round(regression.b * 100) / 100,
         r2: Math.round(regression.r2 * 100) / 100,
       },
-      roiHistorico,
+      roasHistorico,
       forecast: scenarios,
       hasEnoughData: projPoints.length >= 3,
     };
@@ -412,15 +415,15 @@ export async function GET(req: NextRequest) {
     const efficiencyScores: EfficiencyScore[] = [];
 
     if (investGoogle > 0 || receitaGoogle > 0) {
-      const roi = investGoogle > 0 ? receitaGoogle / investGoogle : 0;
+      const roas = investGoogle > 0 ? receitaGoogle / investGoogle : 0;
       const dealsGoogle = paidChannels.filter(ch => /google/i.test(ch.canal)).reduce((s, ch) => s + ch.vendas, 0);
       efficiencyScores.push({
         canal: 'Google Ads',
         tipo: 'google',
         investimento: Math.round(investGoogle),
         receita: Math.round(receitaGoogle),
-        roi: Math.round(roi * 100) / 100,
-        roiLabel: `${Math.round(roi * 10) / 10}x`,
+        roas: Math.round(roas * 100) / 100,
+        roasLabel: `${Math.round(roas * 10) / 10}x`,
         deals: dealsGoogle,
         ticketMedio: dealsGoogle > 0 ? Math.round(receitaGoogle / dealsGoogle) : 0,
         cpa: dealsGoogle > 0 && investGoogle > 0 ? Math.round(investGoogle / dealsGoogle) : 0,
@@ -428,15 +431,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (receitaMeta > 0 || investMeta > 0) {
-      const roi = investMeta > 0 ? receitaMeta / investMeta : 0;
+      const roas = investMeta > 0 ? receitaMeta / investMeta : 0;
       const dealsMeta = paidChannels.filter(ch => /meta|instagram|facebook|redes?\s*social/i.test(ch.canal)).reduce((s, ch) => s + ch.vendas, 0);
       efficiencyScores.push({
         canal: 'Meta Ads',
         tipo: 'meta',
         investimento: Math.round(investMeta),
         receita: Math.round(receitaMeta),
-        roi: Math.round(roi * 100) / 100,
-        roiLabel: investMeta > 0 ? `${Math.round(roi * 10) / 10}x` : 'N/D',
+        roas: Math.round(roas * 100) / 100,
+        roasLabel: investMeta > 0 ? `${Math.round(roas * 10) / 10}x` : 'N/D',
         deals: dealsMeta,
         ticketMedio: dealsMeta > 0 ? Math.round(receitaMeta / dealsMeta) : 0,
         cpa: dealsMeta > 0 && investMeta > 0 ? Math.round(investMeta / dealsMeta) : 0,

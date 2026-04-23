@@ -281,7 +281,7 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
     );
   }
 
-  const { forecast, roiHistorico, regression, points } = proj;
+  const { forecast, roasHistorico, regression, points } = proj;
   const baseScenario = forecast[1]; // 1x = média histórica
 
   return (
@@ -299,9 +299,9 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
       {/* Contexto histórico */}
       <div className="grid grid-cols-3 gap-4 mb-5">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">ROI Histórico</p>
-          <p className="text-2xl font-bold text-indigo-700">{roiHistorico}x</p>
-          <p className="text-xs text-slate-500 mt-1">cada R$ 1 investido gerou R$ {roiHistorico} em oportunidades</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">ROAS Histórico</p>
+          <p className="text-2xl font-bold text-indigo-700">{roasHistorico}x</p>
+          <p className="text-xs text-slate-500 mt-1">cada R$ 1 investido gerou R$ {roasHistorico} em faturamento atribuído</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Meses analisados</p>
@@ -328,7 +328,7 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
               <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Cenário</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Investimento</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Faturamento esperado</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">ROI projetado</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">ROAS projetado</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -354,8 +354,8 @@ function GoogleProjectionSection({ proj }: { proj: GoogleProjection }) {
                     {BRL(f.receitaEsperada)}
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <span className={`text-sm font-bold ${f.roi >= 3 ? 'text-emerald-600' : f.roi >= 1.5 ? 'text-amber-600' : 'text-red-500'}`}>
-                      {f.roi}x
+                    <span className={`text-sm font-bold ${f.roas >= 3 ? 'text-emerald-600' : f.roas >= 1.5 ? 'text-amber-600' : 'text-red-500'}`}>
+                      {f.roas}x
                     </span>
                   </td>
                 </tr>
@@ -388,22 +388,22 @@ function EfficiencySection({ scores }: { scores: EfficiencyScore[] }) {
     );
   }
 
-  const maxRoi = Math.max(...scores.map(s => s.roi), 1);
+  const maxRoi = Math.max(...scores.map(s => s.roas), 1);
 
   return (
     <section>
       <div className="mb-4">
         <h2 className="text-base font-bold text-slate-800">Qual canal pago é mais eficiente?</h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          Faturamento gerado por real investido — ROI = faturamento atribuído ÷ investimento real
+          ROAS = faturamento atribuído ÷ investimento em anúncios
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {scores.map(s => {
-          const roiBar = (s.roi / maxRoi) * 100;
-          const roiColor = s.roi >= 3 ? 'text-emerald-600' : s.roi >= 1.5 ? 'text-amber-600' : 'text-red-500';
-          const barColor = s.roi >= 3 ? 'bg-emerald-500' : s.roi >= 1.5 ? 'bg-amber-400' : 'bg-red-400';
+          const roiBar = (s.roas / maxRoi) * 100;
+          const roiColor = s.roas >= 3 ? 'text-emerald-600' : s.roas >= 1.5 ? 'text-amber-600' : 'text-red-500';
+          const barColor = s.roas >= 3 ? 'bg-emerald-500' : s.roas >= 1.5 ? 'bg-amber-400' : 'bg-red-400';
 
           return (
             <div key={s.canal} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
@@ -415,8 +415,8 @@ function EfficiencySection({ scores }: { scores: EfficiencyScore[] }) {
                   <p className="text-sm font-bold text-slate-800">{s.canal}</p>
                 </div>
                 <div className="text-right">
-                  <p className={`text-2xl font-bold ${roiColor}`}>{s.roiLabel}</p>
-                  <p className="text-[10px] text-slate-400">por real investido</p>
+                  <p className={`text-2xl font-bold ${roiColor}`}>{s.roasLabel}</p>
+                  <p className="text-[10px] text-slate-400">ROAS</p>
                 </div>
               </div>
 
