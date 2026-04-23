@@ -31,8 +31,8 @@ export async function GET(req: Request) {
       where: { saleDate: { gte: p2Start, lte: p2End } },
     });
 
-    const p1Revenue = p1.reduce((s: number, x) => s + x.revenue, 0);
-    const p2Revenue = p2.reduce((s: number, x) => s + x.revenue, 0);
+    const p1Revenue = p1.reduce((s: number, x: { revenue: number }) => s + x.revenue, 0);
+    const p2Revenue = p2.reduce((s: number, x: { revenue: number }) => s + x.revenue, 0);
     const growth = p2Revenue > 0 ? ((p1Revenue - p2Revenue) / p2Revenue) * 100 : 0;
 
     return NextResponse.json({
