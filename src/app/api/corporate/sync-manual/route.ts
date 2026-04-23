@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { corporateSyncQueue } from '@/lib/queue';
+import { getCorporateSyncQueue } from '@/lib/queue';
 
 // Corporate Sync Manual - Task 13
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,7 @@ export async function POST() {
     }
 
     // Trigger job immediately with high priority
-    const job = await corporateSyncQueue.add({}, { priority: 10 });
+    const job = await getCorporateSyncQueue().add({}, { priority: 10 });
     return NextResponse.json({ success: true, jobId: job.id });
   } catch (error) {
     console.error('[sync-manual] error:', error);
