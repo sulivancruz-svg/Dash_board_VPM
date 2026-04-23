@@ -16,6 +16,10 @@ const baseData = {
     receita: 250000,
     deals: 18,
     ticketMedio: 13888,
+    investGoogle: 40000,
+    investMeta: 8000,
+    totalInvest: 48000,
+    receitaMidiaPaga: 153600,
   },
   googleProjection: { hasEnoughData: true, roasHistorico: 3.2, r2: 0.87 },
   anomalies: {

@@ -51,22 +51,36 @@ export async function POST(req: NextRequest) {
     const receitaMidiaPaga = metrics.channels
       .filter(ch => attributeChannel(ch.canal) === 'PAID_MEDIA')
       .reduce((s, ch) => s + ch.receita, 0);
+    // Google: totalSpend é o histórico completo salvo no sync — coerente com histórico completo do Pipedrive
     const investGoogle = googleAdsData?.totalSpend ?? 0;
 
+    // Meta: busca período equivalente ao histórico Google (usamos o período mais longo suportado)
     let investMeta = 0;
     if (metaToken?.token && metaToken?.accountId) {
       try {
         const url = new URL(`https://graph.facebook.com/v20.0/${metaToken.accountId}/insights`);
         url.searchParams.append('access_token', metaToken.token);
         url.searchParams.append('fields', 'spend');
-        url.searchParams.append('date_preset', 'last_90d');
+        // Usa o mesmo horizonte do Google Ads salvo (primeiro mês disponível → hoje)
+        if (googleAdsData?.months?.length) {
+          const sorted = [...googleAdsData.months].sort((a, b) =>
+            `${a.year}-${String(typeof a.month === 'number' ? a.month : 1).padStart(2,'0')}`.localeCompare(
+              `${b.year}-${String(typeof b.month === 'number' ? b.month : 1).padStart(2,'0')}`)
+          );
+          const first = sorted[0];
+          const since = `${first.year}-01-01`;
+          const until = new Date().toISOString().substring(0, 10);
+          url.searchParams.append('time_range', JSON.stringify({ since, until }));
+        } else {
+          url.searchParams.append('date_preset', 'last_year');
+        }
         const res = await fetch(url.toString());
         if (res.ok) {
           const data = await res.json();
           investMeta = parseFloat(data.data?.[0]?.spend ?? '0');
         }
       } catch {
-        // ignora falha do Meta, segue sem ele
+        // ignora falha do Meta
       }
     }
 
@@ -133,7 +147,17 @@ export async function POST(req: NextRequest) {
     const contextData: IntelligenceContextData = {
       channelRanking,
       monthly,
-      kpis: { roas, cpl, receita: totalReceita, deals: totalDeals, ticketMedio },
+      kpis: {
+        roas,
+        cpl,
+        receita: totalReceita,
+        deals: totalDeals,
+        ticketMedio,
+        investGoogle,
+        investMeta,
+        totalInvest,
+        receitaMidiaPaga,
+      },
       googleProjection,
       anomalies: { totalAlerts: anomalyAlerts.length, alerts: anomalyAlerts },
     };

@@ -27,6 +27,11 @@ export interface IntelligenceContextData {
     receita: number;
     deals: number;
     ticketMedio: number;
+    // investimentos detalhados para o AI validar o ROAS
+    investGoogle: number;
+    investMeta: number;
+    totalInvest: number;
+    receitaMidiaPaga: number;
   };
   googleProjection: {
     hasEnoughData: boolean;
@@ -51,13 +56,29 @@ export function buildIntelligencePrompt(data: IntelligenceContextData): string {
   lines.push('Responda sempre em português, de forma direta e objetiva, sem jargão técnico.');
   lines.push('Quando falar de retorno sobre investimento em mídia paga, use sempre "ROAS" (nunca "ROI").');
   lines.push('');
+  lines.push('IMPORTANTE: Todos os números abaixo vêm diretamente do dashboard da empresa (Pipedrive + Google Ads + Meta Ads).');
+  lines.push('Trate-os como fatos verificados. Não questione a veracidade dos dados — se algo parecer alto ou baixo, explique o que pode ter causado isso com base nos próprios dados disponíveis.');
+  lines.push('Nunca diga que os dados "podem estar errados" sem antes mostrar o cálculo completo que você tem.');
+  lines.push('');
 
   // KPIs
-  lines.push('## KPIs do período');
+  lines.push('## KPIs do período (histórico completo)');
   lines.push(`- Faturamento total: ${BRL(data.kpis.receita)}`);
   lines.push(`- Deals fechados: ${NUM(data.kpis.deals)}`);
   lines.push(`- Ticket médio: ${BRL(data.kpis.ticketMedio)}`);
-  if (data.kpis.roas !== null) lines.push(`- ROAS (mídia paga): ${data.kpis.roas}x`);
+  lines.push('');
+
+  // Investimento e ROAS detalhados
+  lines.push('## Investimento em mídia paga');
+  lines.push(`- Google Ads (histórico total): ${BRL(data.kpis.investGoogle)}`);
+  lines.push(`- Meta Ads (período equivalente): ${data.kpis.investMeta > 0 ? BRL(data.kpis.investMeta) : 'não disponível'}`);
+  lines.push(`- Total investido em anúncios: ${BRL(data.kpis.totalInvest)}`);
+  lines.push(`- Faturamento atribuído a canais de mídia paga: ${BRL(data.kpis.receitaMidiaPaga)}`);
+  if (data.kpis.roas !== null) {
+    lines.push(`- ROAS = ${BRL(data.kpis.receitaMidiaPaga)} ÷ ${BRL(data.kpis.totalInvest)} = ${data.kpis.roas}x`);
+  } else {
+    lines.push('- ROAS: não calculado (investimento não disponível)');
+  }
   if (data.kpis.cpl !== null) lines.push(`- CPL (custo por lead): ${BRL(data.kpis.cpl)}`);
   lines.push('');
 
