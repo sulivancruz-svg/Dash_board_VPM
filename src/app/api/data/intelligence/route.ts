@@ -5,6 +5,7 @@ import { attributeChannel } from '@/lib/channel-mapping';
 import type { GoogleAdsStoredData } from '@/lib/google-ads-store';
 import { getPipedriveMetricsForRange } from '@/lib/pipedrive-metrics';
 import type { DateRange } from '@/lib/date-range';
+import { getMetaToken } from '@/lib/meta-token-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -40,6 +41,15 @@ function linearRegression(points: Array<{ x: number; y: number }>) {
 const PT_MONTHS: Record<number, string> = {
   1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',
   7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez',
+};
+
+// Reverse map: full PT name (as stored by google-ads-store) → month number
+const PT_MONTH_NAME_TO_NUM: Record<string, number> = {
+  janeiro:1, fevereiro:2, marco:3, abril:4, maio:5, junho:6,
+  julho:7, agosto:8, setembro:9, outubro:10, novembro:11, dezembro:12,
+  // abbreviated fallbacks
+  jan:1, fev:2, mar:3, abr:4, mai:5, jun:6,
+  jul:7, ago:8, set:9, out:10, nov:11, dez:12,
 };
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -168,10 +178,11 @@ export async function GET(req: NextRequest) {
       return true;
     };
 
-    const [pipedriveData, sdrData, googleAdsData] = await Promise.all([
+    const [pipedriveData, sdrData, googleAdsData, metaToken] = await Promise.all([
       getPipedriveData(),
       getSdrData(),
       blobGetJson<GoogleAdsStoredData>('google-ads-data'),
+      getMetaToken(),
     ]);
 
     const empty: IntelligenceData = {
@@ -276,39 +287,43 @@ export async function GET(req: NextRequest) {
 
     // ──────────────────────────────────────────────────────────────────────────
     // 3. PROJEÇÃO GOOGLE
-    //    Cruza investimento Google (por mês) × receita de oportunidades criadas
-    //    no mesmo mês. Regressão linear → forecast.
+    //    Cruza investimento Google (por mês, filtrado pelo período selecionado)
+    //    × faturamento do Pipedrive no mesmo mês. Regressão linear → forecast.
     // ──────────────────────────────────────────────────────────────────────────
-    const googleMonths = googleAdsData?.months ?? [];
+    const googleMonths = (googleAdsData?.months ?? []).filter(gm => {
+      const monthNum = typeof gm.month === 'number'
+        ? gm.month
+        : PT_MONTH_NAME_TO_NUM[gm.month] ?? 0;
+      const mk = `${gm.year}-${String(monthNum).padStart(2, '0')}`;
+      return monthInRange(mk);
+    });
 
-    // Receita por mês — usa metrics.monthly (mesma fonte de verdade)
-    // Para regressão usamos histórico completo (sem filtro de período),
-    // pois precisamos de mais pontos para a correlação ser confiável.
-    const metricsAll = getPipedriveMetricsForRange(pipedriveData, undefined);
+    // Faturamento por mês filtrado pelo período — mesma fonte dos outros cards
     const pipeMonthMap = new Map<string, number>();
-    for (const m of (metricsAll?.monthly ?? metrics.monthly)) {
+    for (const m of metrics.monthly) {
       pipeMonthMap.set(m.monthKey, m.receita);
     }
 
     const projPoints: ProjectionPoint[] = [];
     for (const gm of googleMonths) {
-      const [y, m] = [gm.year, gm.month as unknown as number];
       const monthNum = typeof gm.month === 'number'
         ? gm.month
-        : Object.entries(PT_MONTHS).find(([, v]) => v === gm.month)?.[0];
-      const mk = `${y}-${String(monthNum || m).padStart(2, '0')}`;
+        : PT_MONTH_NAME_TO_NUM[gm.month] ?? 0;
+      const mk = `${gm.year}-${String(monthNum).padStart(2, '0')}`;
       const receita = pipeMonthMap.get(mk) ?? 0;
-      const monthNumInt = typeof monthNum === 'string' ? parseInt(monthNum) : (monthNum as number | undefined) ?? 0;
       if (gm.spend > 0) {
         projPoints.push({
           monthKey: mk,
-          label: `${PT_MONTHS[monthNumInt] ?? gm.month}/${y}`,
+          label: `${PT_MONTHS[monthNum] ?? gm.month}/${gm.year}`,
           invest:  Math.round(gm.spend),
           receita: Math.round(receita),
         });
       }
     }
     projPoints.sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+    // metricsAll ainda necessário para anomalias (usa histórico completo)
+    const metricsAll = getPipedriveMetricsForRange(pipedriveData, undefined);
 
     const regression = linearRegression(projPoints.map(p => ({ x: p.invest, y: p.receita })));
     const totalGoogleInvest  = projPoints.reduce((s, p) => s + p.invest, 0);
@@ -365,10 +380,34 @@ export async function GET(req: NextRequest) {
       .filter(ch => !/google|meta|instagram|facebook|redes?\s*social/i.test(ch.canal))
       .reduce((s, ch) => s + ch.receita, 0);
 
-    const investGoogle = googleAdsData?.totalSpend ?? 0;
-    // Meta: usa dado da store se disponível (não temos no momento → deixa 0 se ausente)
-    // Para não bloquear, mantemos como 0 até ter o token Meta ativo
-    const investMeta   = 0;   // será preenchido quando Meta API estiver conectada
+    // Google: filtra por período se tiver dados diários, senão usa totalSpend
+    const investGoogle = start && end && googleAdsData?.daily?.length
+      ? googleAdsData.daily
+          .filter(d => d.date >= start && d.date <= end)
+          .reduce((s, d) => s + d.spend, 0)
+      : (googleAdsData?.totalSpend ?? 0);
+
+    // Meta: busca investimento via API usando token salvo
+    let investMeta = 0;
+    if (metaToken?.token && metaToken?.accountId) {
+      try {
+        const metaUrl = new URL(`https://graph.facebook.com/v20.0/${metaToken.accountId}/insights`);
+        metaUrl.searchParams.append('access_token', metaToken.token);
+        metaUrl.searchParams.append('fields', 'spend');
+        if (start && end) {
+          metaUrl.searchParams.append('time_range', JSON.stringify({ since: start, until: end }));
+        } else {
+          metaUrl.searchParams.append('date_preset', 'last_90d');
+        }
+        const metaRes = await fetch(metaUrl.toString());
+        if (metaRes.ok) {
+          const metaJson = await metaRes.json();
+          investMeta = parseFloat(metaJson.data?.[0]?.spend ?? '0');
+        }
+      } catch {
+        // ignora falha do Meta
+      }
+    }
 
     const efficiencyScores: EfficiencyScore[] = [];
 
