@@ -122,9 +122,9 @@ export async function POST(req: NextRequest) {
       if (Math.abs(changePct) > 20) {
         const lastM = monthly[monthly.length - 1];
         anomalyAlerts.push({
-          metric: 'Receita Mensal',
+          metric: 'Faturamento Mensal',
           severity: Math.abs(changePct) > 35 ? 'critical' : 'warning',
-          message: `Receita (${lastM.month}/${lastM.year}) está ${Math.abs(changePct)}% ${changePct < 0 ? 'abaixo' : 'acima'} da média histórica`,
+          message: `Faturamento (${lastM.month}/${lastM.year}) está ${Math.abs(changePct)}% ${changePct < 0 ? 'abaixo' : 'acima'} da média histórica`,
           zScore: Math.round((changePct / 20) * 100) / 100,
         });
       }

@@ -54,7 +54,7 @@ export function buildIntelligencePrompt(data: IntelligenceContextData): string {
 
   // KPIs
   lines.push('## KPIs do período');
-  lines.push(`- Receita total: ${BRL(data.kpis.receita)}`);
+  lines.push(`- Faturamento total: ${BRL(data.kpis.receita)}`);
   lines.push(`- Deals fechados: ${NUM(data.kpis.deals)}`);
   lines.push(`- Ticket médio: ${BRL(data.kpis.ticketMedio)}`);
   if (data.kpis.roas !== null) lines.push(`- ROAS (mídia paga): ${data.kpis.roas}x`);
@@ -64,12 +64,12 @@ export function buildIntelligencePrompt(data: IntelligenceContextData): string {
   // Ranking de canais
   lines.push('## Canais de origem (por ticket médio)');
   for (const ch of data.channelRanking.slice(0, 10)) {
-    lines.push(`- ${ch.canal}: receita ${BRL(ch.receita)}, ${ch.deals} deals, ticket médio ${BRL(ch.ticketMedio)}, ${ch.pctReceita}% do faturamento`);
+    lines.push(`- ${ch.canal}: faturamento ${BRL(ch.receita)}, ${ch.deals} deals, ticket médio ${BRL(ch.ticketMedio)}, ${ch.pctReceita}% do faturamento total`);
   }
   lines.push('');
 
   // Histórico mensal
-  lines.push('## Histórico mensal (receita e deals)');
+  lines.push('## Histórico mensal (faturamento e deals)');
   for (const m of data.monthly) {
     lines.push(`- ${m.month}/${m.year}: ${BRL(m.receita)}, ${m.deals} deals`);
   }
