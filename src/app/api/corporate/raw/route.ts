@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import type { Prisma } from '@prisma/client';
-
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
@@ -26,7 +24,12 @@ export async function GET(req: Request) {
     if (isNaN(limit) || limit < 1) limit = 50;
     if (limit > 500) limit = 500;
 
-    const where: Prisma.CorporateSaleWhereInput = {};
+    const where: {
+      seller?: string;
+      client?: string;
+      product?: string;
+      saleDate?: { gte?: Date; lte?: Date };
+    } = {};
     if (seller) where.seller = seller;
     if (client) where.client = client;
     if (product) where.product = product;
