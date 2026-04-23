@@ -327,11 +327,14 @@ function ChannelProjectionSection({ proj, canal }: { proj: ChannelProjection; ca
           <p className="text-xs text-slate-500 mt-1">pares investimento × faturamento disponíveis</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Confiança</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Confiança (R²)</p>
           <p className={`text-2xl font-bold ${regression.r2 >= 0.7 ? 'text-emerald-600' : regression.r2 >= 0.4 ? 'text-amber-600' : 'text-red-500'}`}>
             {regression.r2 >= 0.7 ? 'Alta' : regression.r2 >= 0.4 ? 'Média' : 'Baixa'}
           </p>
           <p className="text-xs text-slate-500 mt-1">R² = {regression.r2}</p>
+          <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+            <span className="font-medium text-slate-500">O que é R²?</span> Mede o quanto o investimento explica o faturamento. R² = 1 = correlação perfeita; R² = 0 = nenhuma correlação. Abaixo de 0.4 os cenários são apenas estimativas.
+          </p>
         </div>
       </div>
 
