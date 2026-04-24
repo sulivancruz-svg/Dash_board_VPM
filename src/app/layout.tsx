@@ -26,7 +26,7 @@ const navItems = [
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+      <body className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 antialiased">
         <SessionProviderWrapper>
           <div className="flex h-screen overflow-hidden">
             <aside className="w-60 flex-shrink-0 bg-slate-900 flex flex-col">

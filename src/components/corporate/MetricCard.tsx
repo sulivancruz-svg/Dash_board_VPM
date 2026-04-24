@@ -14,17 +14,28 @@ export function MetricCard({ label, value, change, format = 'number' }: MetricCa
     ? `${Number(value).toFixed(1)}%`
     : Number(value).toLocaleString('pt-BR');
 
-  const changeColor = change ? change >= 0 ? 'text-green-600' : 'text-red-600' : '';
+  const changeColor = change && change >= 0 ? 'text-emerald-400' : 'text-red-400';
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-      <p className="text-sm text-gray-600 mb-2">{label}</p>
-      <div className="text-2xl font-bold text-gray-900">{formatted}</div>
-      {change !== undefined && (
-        <p className={`text-sm mt-2 ${changeColor}`}>
-          {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-        </p>
-      )}
+    <div className="relative group">
+      {/* Gradient border glow effect */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-xl opacity-0 group-hover:opacity-75 transition-opacity duration-300 blur" />
+
+      {/* Card */}
+      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-6 border border-slate-700/50 backdrop-blur-sm">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{label}</p>
+        <div className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          {formatted}
+        </div>
+        {change !== undefined && (
+          <div className={`text-xs font-semibold mt-3 flex items-center gap-1 ${changeColor}`}>
+            <span className={change >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+              {change >= 0 ? '↑' : '↓'}
+            </span>
+            {Math.abs(change).toFixed(1)}%
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,53 @@
+<h2>A barra de chat tem sugestões de perguntas?</h2>
+<p class="subtitle">Chips clicáveis que o usuário pode usar como atalho</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">A — Só o input (simples)</div>
+    <div class="mockup-body" style="padding:16px;background:#f8fafc;">
+      <div style="background:#fff;border:1px solid #6366f1;border-radius:10px;padding:12px;display:flex;gap:8px;align-items:center;box-shadow:0 2px 8px rgba(99,102,241,0.12);">
+        <span style="font-size:16px;">💬</span>
+        <div style="flex:1;height:28px;background:#f1f5f9;border-radius:6px;border:1px solid #e2e8f0;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#94a3b8;">Pergunte sobre seus dados...</div>
+        <div style="width:70px;height:28px;background:#6366f1;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:600;">Enviar</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Input + chips de sugestão</div>
+    <div class="mockup-body" style="padding:16px;background:#f8fafc;">
+      <div style="background:#fff;border:1px solid #6366f1;border-radius:10px;padding:12px;box-shadow:0 2px 8px rgba(99,102,241,0.12);">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <span style="font-size:16px;">💬</span>
+          <div style="flex:1;height:28px;background:#f1f5f9;border-radius:6px;border:1px solid #e2e8f0;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#94a3b8;">Pergunte sobre seus dados...</div>
+          <div style="width:70px;height:28px;background:#6366f1;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:600;">Enviar</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:4px 8px;border-radius:20px;cursor:pointer;">Qual canal tem melhor ROI?</span>
+          <span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:4px 8px;border-radius:20px;cursor:pointer;">O que está gerando as anomalias?</span>
+          <span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:4px 8px;border-radius:20px;cursor:pointer;">Onde devo investir mais?</span>
+          <span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:4px 8px;border-radius:20px;cursor:pointer;">Como está a conversão SDR?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top:24px;">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Só o input</h3>
+      <p>Limpo, o usuário sabe o que quer perguntar. Menos ruído visual.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Input + chips de sugestão</h3>
+      <p>Ajuda quem não sabe por onde começar. Os chips mudam conforme os dados do período (ex: se tem anomalia, aparece chip sobre ela).</p>
+    </div>
+  </div>
+</div>

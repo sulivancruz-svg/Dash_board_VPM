@@ -303,7 +303,7 @@ function ChannelProjectionSection({ proj, canal }: { proj: ChannelProjection; ca
       </div>
 
       {/* Contexto histórico — sempre mostra */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-2 gap-4 mb-5">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">ROAS Histórico</p>
           <p className="text-2xl font-bold text-indigo-700">{roasHistorico > 0 ? `${roasHistorico}x` : 'N/D'}</p>
@@ -313,18 +313,6 @@ function ChannelProjectionSection({ proj, canal }: { proj: ChannelProjection; ca
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Meses analisados</p>
           <p className="text-2xl font-bold text-slate-700">{points.length}</p>
           <p className="text-xs text-slate-500 mt-1">{points.length >= 3 ? 'pares investimento × faturamento' : 'dados insuficientes'}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Confiança (R²)</p>
-          <p className={`text-2xl font-bold ${proj.hasEnoughData ? (regression.r2 >= 0.7 ? 'text-emerald-600' : regression.r2 >= 0.4 ? 'text-amber-600' : 'text-red-500') : 'text-slate-400'}`}>
-            {proj.hasEnoughData ? (regression.r2 >= 0.7 ? 'Alta' : regression.r2 >= 0.4 ? 'Média' : 'Baixa') : '—'}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">{proj.hasEnoughData ? `R² = ${regression.r2}` : 'sem projeção'}</p>
-          {proj.hasEnoughData && (
-            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              <span className="font-medium text-slate-500">O que significa?</span> Mede como o investimento em anúncios explica o faturamento gerado. Quanto mais próximo de 1, mais previsível é o resultado. Abaixo de 0.4, as projeções são apenas estimativas.
-            </p>
-          )}
         </div>
       </div>
 

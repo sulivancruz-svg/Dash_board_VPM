@@ -24,11 +24,27 @@ export function SyncButton() {
       <button
         onClick={handleSync}
         disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        className={`relative px-6 py-2.5 font-semibold rounded-lg transition-all duration-300 transform ${
+          loading
+            ? 'scale-95 opacity-75 cursor-not-allowed'
+            : 'hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/50'
+        } bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white shadow-md`}
       >
-        {loading ? 'Sincronizando...' : 'Sincronizar'}
+        <span className="flex items-center gap-2">
+          {loading && (
+            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
+          {loading ? 'Sincronizando...' : 'Sincronizar'}
+        </span>
       </button>
-      {lastSync && <span className="text-sm text-gray-600">Última sincronização: {lastSync}</span>}
+      {lastSync && (
+        <span className="text-xs text-slate-400 font-medium">
+          Sincronizado: {lastSync}
+        </span>
+      )}
     </div>
   );
 }

@@ -76,43 +76,45 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header with gradient text */}
+      <div className="flex justify-between items-start gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900" id="page-title">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent" id="page-title">
             Visão Geral Corporativa
           </h1>
-          <p className="text-gray-600 mt-2">Análise de vendas em tempo real</p>
+          <p className="text-slate-400 mt-3 text-lg">Análise de vendas em tempo real • Sincronizado automaticamente</p>
         </div>
         <SyncButton />
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="Total de Vendas" value={metrics.totalSales} format="number" />
         <MetricCard label="Receita Total" value={metrics.totalRevenue} format="currency" />
         <MetricCard label="Faturamento" value={metrics.totalBilling} format="currency" />
         <MetricCard label="Ticket Médio" value={metrics.avgTicket} format="currency" change={metrics.revenueGrowth} />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Monthly Trend */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Tendência Mensal</h2>
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Trend Chart */}
+        <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 backdrop-blur-sm">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 opacity-50" />
+          <h2 className="text-lg font-semibold text-slate-200 mb-5">Tendência Mensal</h2>
           <LineChartCorp
             data={monthlyTrend}
             lines={[
-              { dataKey: 'revenue', stroke: '#3b82f6', name: 'Receita' },
-              { dataKey: 'billing', stroke: '#10b981', name: 'Faturamento' },
+              { dataKey: 'revenue', stroke: '#00d9ff', name: 'Receita' },
+              { dataKey: 'billing', stroke: '#8b5cf6', name: 'Faturamento' },
             ]}
             height={300}
           />
         </div>
 
-        {/* Top Sellers */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top 8 Vendedores</h2>
+        {/* Top Sellers Chart */}
+        <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 backdrop-blur-sm">
+          <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-l from-cyan-500 via-purple-500 to-pink-500 opacity-50" />
+          <h2 className="text-lg font-semibold text-slate-200 mb-5">Top 8 Vendedores</h2>
           <BarChartCorp
             data={topSellers.slice(0, 8).map(s => ({ name: s.name, revenue: s.revenue }))}
             dataKey="revenue"
@@ -121,22 +123,24 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* Product & Profile Cards */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Products */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Breakdown de Produtos</h2>
+      {/* Product & Profile Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Products Distribution */}
+        <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 backdrop-blur-sm">
+          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 via-purple-500 to-pink-500 opacity-50" />
+          <h2 className="text-lg font-semibold text-slate-200 mb-5">Breakdown de Produtos</h2>
           <PieChartCorp data={products.map(p => ({ name: p.name, value: p.revenue }))} height={300} />
         </div>
 
-        {/* Profiles */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Perfil de Antecedência</h2>
-          <div className="space-y-3">
+        {/* Booking Profiles */}
+        <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 backdrop-blur-sm">
+          <div className="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-pink-500 via-purple-500 to-cyan-500 opacity-50" />
+          <h2 className="text-lg font-semibold text-slate-200 mb-5">Perfil de Antecedência</h2>
+          <div className="space-y-4">
             {profiles.map((p, idx) => (
-              <div key={`${p.profile}-${idx}`} className="flex justify-between items-center">
-                <span className="text-gray-700">{p.profile}</span>
-                <span className="font-semibold">
+              <div key={`${p.profile}-${idx}`} className="flex items-center justify-between p-3 rounded-lg bg-slate-700/20 border border-slate-600/30 hover:border-slate-600/50 transition-colors duration-200">
+                <span className="text-slate-300 font-medium">{p.profile}</span>
+                <span className="font-bold text-transparent bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text">
                   R$ {p.revenue.toLocaleString('pt-BR', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
@@ -149,8 +153,8 @@ export default function OverviewPage() {
       </div>
 
       {/* Top Clients Table */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Top 15 Clientes</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-slate-200 mb-4">Top 15 Clientes</h2>
         <DataTable
           columns={[
             { key: 'name', label: 'Cliente' },

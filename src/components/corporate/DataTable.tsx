@@ -22,36 +22,42 @@ export function DataTable<T extends Record<string, unknown>>({ columns, data, on
   };
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-100 border-b">
-          <tr>
-            {columns.map(col => (
-              <th key={col.key} className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row) => (
-            <tr key={String(row.id)} className="border-b hover:bg-gray-50">
+    <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 backdrop-blur-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-700/25">
               {columns.map(col => (
-                <td key={col.key} className="px-6 py-4 text-sm text-gray-700">
-                  {formatValue(row[col.key], col.format)}
-                </td>
+                <th key={col.key} className="px-6 py-4 text-left text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  {col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-700/50">
+            {data.map((row, idx) => (
+              <tr key={String(row.id)} className="hover:bg-slate-700/30 transition-colors duration-150">
+                {columns.map(col => (
+                  <td key={col.key} className="px-6 py-4 text-sm text-slate-200">
+                    {formatValue(row[col.key], col.format)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2 p-4">
+        <div className="flex justify-center items-center gap-3 p-5 border-t border-slate-700/50 bg-slate-800/30">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
             <button
               key={page}
               onClick={() => onPageChange?.(page)}
-              className={`px-3 py-1 rounded ${page === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                page === currentPage
+                  ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-slate-700/40 text-slate-300 hover:bg-slate-600/50'
+              }`}
             >
               {page}
             </button>

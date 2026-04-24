@@ -1,0 +1,91 @@
+<h2>Onde o chat aparece na página?</h2>
+<p class="subtitle">Como o usuário acessa e interage com a IA</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:140px;gap:6px;padding:8px;background:#f8fafc;border-radius:8px;font-size:11px;">
+        <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;">
+          <div style="height:12px;background:#e2e8f0;border-radius:3px;margin-bottom:6px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;margin-bottom:4px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;width:70%;"></div>
+          <div style="height:30px;background:#f1f5f9;border-radius:4px;margin-top:10px;"></div>
+        </div>
+        <div style="width:200px;background:#fff;border:1px solid #6366f1;border-radius:6px;padding:8px;">
+          <div style="color:#6366f1;font-weight:700;font-size:10px;margin-bottom:6px;">💬 Chat IA</div>
+          <div style="height:8px;background:#ede9fe;border-radius:3px;margin-bottom:4px;"></div>
+          <div style="height:8px;background:#ede9fe;border-radius:3px;width:80%;margin-bottom:8px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;margin-bottom:4px;"></div>
+          <div style="height:22px;background:#6366f1;border-radius:4px;margin-top:10px;opacity:0.8;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Painel lateral fixo</h3>
+      <p>Chat sempre visível na direita, ao lado dos dados. O usuário olha os gráficos e já digita a pergunta sem precisar abrir nada.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="position:relative;height:140px;padding:8px;background:#f8fafc;border-radius:8px;">
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;height:100%;">
+          <div style="height:12px;background:#e2e8f0;border-radius:3px;margin-bottom:6px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;margin-bottom:4px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;width:70%;"></div>
+        </div>
+        <div style="position:absolute;bottom:16px;right:16px;width:40px;height:40px;background:#6366f1;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;box-shadow:0 4px 12px rgba(99,102,241,0.4);">💬</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Botão flutuante</h3>
+      <p>Ícone de chat fixo no canto inferior direito. Ao clicar, abre um modal/popover de chat. Não interfere no layout da página.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:140px;padding:8px;background:#f8fafc;border-radius:8px;">
+        <div style="background:#fff;border:1px solid #6366f1;border-radius:6px;padding:8px;margin-bottom:6px;">
+          <div style="color:#6366f1;font-weight:700;font-size:10px;margin-bottom:4px;">💬 Pergunte à IA sobre seus dados</div>
+          <div style="display:flex;gap:4px;">
+            <div style="flex:1;height:24px;background:#f1f5f9;border-radius:4px;border:1px solid #e2e8f0;"></div>
+            <div style="width:50px;height:24px;background:#6366f1;border-radius:4px;opacity:0.8;"></div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;">
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;margin-bottom:4px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;width:70%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Barra de perguntas no topo</h3>
+      <p>Uma barra de input no topo da página, antes das seções. O usuário digita, a resposta aparece logo abaixo. Simples, direto ao ponto.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="d" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="position:relative;height:140px;padding:8px;background:#f8fafc;border-radius:8px;overflow:hidden;">
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;height:70px;">
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;margin-bottom:4px;"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:3px;width:70%;"></div>
+        </div>
+        <div style="position:absolute;bottom:0;left:8px;right:8px;background:#fff;border:1px solid #6366f1;border-radius:6px 6px 0 0;padding:8px;">
+          <div style="color:#6366f1;font-weight:700;font-size:10px;margin-bottom:4px;">💬 Chat IA — ▲ expandir</div>
+          <div style="display:flex;gap:4px;">
+            <div style="flex:1;height:20px;background:#f1f5f9;border-radius:4px;border:1px solid #e2e8f0;"></div>
+            <div style="width:40px;height:20px;background:#6366f1;border-radius:4px;opacity:0.8;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D — Drawer inferior</h3>
+      <p>Uma barra colapsada na parte de baixo que desliza para cima ao clicar. O usuário pode expandir para ver histórico completo ou deixar pequeno só com o input.</p>
+    </div>
+  </div>
+
+</div>
