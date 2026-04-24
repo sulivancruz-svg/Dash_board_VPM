@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const question: string = body?.question ?? '';
+    const dateRange = body?.dateRange ?? {};
+    const startDate = dateRange.start ? new Date(dateRange.start) : undefined;
+    const endDate = dateRange.end ? new Date(dateRange.end) : undefined;
 
     if (!question.trim()) {
       return NextResponse.json({ error: 'Pergunta vazia' }, { status: 400 });
@@ -26,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     const client = new Anthropic({ apiKey });
 
-    // Busca dados internamente — histórico completo, sem filtro de data
+    // Busca dados com filtro de período selecionado na página
     const [pipedriveData, googleAdsData, metaToken] = await Promise.all([
       getPipedriveData(),
       blobGetJson<GoogleAdsStoredData>('google-ads-data'),
@@ -37,7 +40,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nenhum dado importado ainda' }, { status: 400 });
     }
 
-    const metrics = getPipedriveMetricsForRange(pipedriveData, undefined); // histórico completo
+    // Usa o período selecionado na página, ou histórico completo se não especificado
+    const metrics = getPipedriveMetricsForRange(pipedriveData, startDate && endDate ? { start: startDate, end: endDate } : undefined);
     if (!metrics) {
       return NextResponse.json({ error: 'Sem métricas disponíveis' }, { status: 400 });
     }
@@ -54,15 +58,21 @@ export async function POST(req: NextRequest) {
     // Google: totalSpend é o histórico completo salvo no sync — coerente com histórico completo do Pipedrive
     const investGoogle = googleAdsData?.totalSpend ?? 0;
 
-    // Meta: busca período equivalente ao histórico Google (usamos o período mais longo suportado)
+    // Meta: busca período selecionado ou histórico completo
     let investMeta = 0;
     if (metaToken?.token && metaToken?.accountId) {
       try {
         const url = new URL(`https://graph.facebook.com/v20.0/${metaToken.accountId}/insights`);
         url.searchParams.append('access_token', metaToken.token);
         url.searchParams.append('fields', 'spend');
-        // Usa o mesmo horizonte do Google Ads salvo (primeiro mês disponível → hoje)
-        if (googleAdsData?.months?.length) {
+
+        // Se período foi selecionado, usa esse período
+        if (startDate && endDate) {
+          const since = startDate.toISOString().substring(0, 10);
+          const until = endDate.toISOString().substring(0, 10);
+          url.searchParams.append('time_range', JSON.stringify({ since, until }));
+        } else if (googleAdsData?.months?.length) {
+          // Caso contrário, usa o horizonte do Google Ads salvo
           const sorted = [...googleAdsData.months].sort((a, b) =>
             `${a.year}-${String(typeof a.month === 'number' ? a.month : 1).padStart(2,'0')}`.localeCompare(
               `${b.year}-${String(typeof b.month === 'number' ? b.month : 1).padStart(2,'0')}`)

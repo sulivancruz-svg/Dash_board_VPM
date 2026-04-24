@@ -6,6 +6,7 @@ import type { IntelligenceData } from '@/app/api/data/intelligence/route';
 
 interface Props {
   data: IntelligenceData;
+  dateRange?: { start: string; end: string };
 }
 
 function buildChips(data: IntelligenceData): string[] {
@@ -16,7 +17,7 @@ function buildChips(data: IntelligenceData): string[] {
   return chips;
 }
 
-export function IntelligenceChat({ data }: Props) {
+export function IntelligenceChat({ data, dateRange }: Props) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer]     = useState('');
   const [loading, setLoading]   = useState(false);
@@ -39,7 +40,10 @@ export function IntelligenceChat({ data }: Props) {
       const res = await fetch('/api/ai/intelligence-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({
+          question: text,
+          dateRange: dateRange || { start: '', end: '' }
+        }),
         signal: controller.signal,
       });
 

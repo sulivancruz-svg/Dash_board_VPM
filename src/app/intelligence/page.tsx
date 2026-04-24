@@ -667,7 +667,7 @@ export default function IntelligencePage() {
 
       {!loading && !error && data?.hasData && (
         <>
-          <IntelligenceChat data={data} />
+          <IntelligenceChat data={data} dateRange={dateRange} />
           <ChannelRankingSection    channels={data.channelRanking} />
           <TemporalSection          channels={data.temporalByChannel} allMonthKeys={data.allMonthKeys} />
           <GoogleProjectionSection  proj={data.googleProjection} />
