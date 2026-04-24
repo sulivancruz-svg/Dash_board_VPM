@@ -286,20 +286,6 @@ function ProjectionMethodologyBox({ canal }: { canal: 'Google' | 'Meta' }) {
 // SEÇÃO 3 — Projeção (Google ou Meta — componente genérico)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function ChannelProjectionSection({ proj, canal }: { proj: ChannelProjection; canal: 'Google' | 'Meta' }) {
-  if (!proj.hasEnoughData) {
-    return (
-      <section>
-        <h2 className="text-base font-bold text-slate-800 mb-1">
-          Se eu investir mais no {canal}, o que acontece?
-        </h2>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
-          Precisamos de ao menos 3 meses de investimento no {canal} para calcular a projeção.
-        </div>
-        <ProjectionMethodologyBox canal={canal} />
-      </section>
-    );
-  }
-
   const { forecast, roasHistorico, regression, points } = proj;
 
   return (
@@ -308,85 +294,99 @@ function ChannelProjectionSection({ proj, canal }: { proj: ChannelProjection; ca
         <h2 className="text-base font-bold text-slate-800">
           Se eu investir mais no {canal}, o que acontece?
         </h2>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Projeção baseada em regressão linear do histórico real
-          {' '}· R² = {regression.r2} (quanto mais próximo de 1, mais confiável)
-        </p>
+        {proj.hasEnoughData && (
+          <p className="text-xs text-slate-400 mt-0.5">
+            Projeção baseada em regressão linear do histórico real
+            {' '}· R² = {regression.r2} (quanto mais próximo de 1, mais confiável)
+          </p>
+        )}
       </div>
 
-      {/* Contexto histórico */}
+      {/* Contexto histórico — sempre mostra */}
       <div className="grid grid-cols-3 gap-4 mb-5">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">ROAS Histórico</p>
-          <p className="text-2xl font-bold text-indigo-700">{roasHistorico}x</p>
-          <p className="text-xs text-slate-500 mt-1">cada R$ 1 investido gerou R$ {roasHistorico} em faturamento atribuído</p>
+          <p className="text-2xl font-bold text-indigo-700">{roasHistorico > 0 ? `${roasHistorico}x` : 'N/D'}</p>
+          <p className="text-xs text-slate-500 mt-1">{roasHistorico > 0 ? `cada R$ 1 investido gerou R$ ${roasHistorico} em faturamento atribuído` : 'sem dados de investimento'}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Meses analisados</p>
           <p className="text-2xl font-bold text-slate-700">{points.length}</p>
-          <p className="text-xs text-slate-500 mt-1">pares investimento × faturamento disponíveis</p>
+          <p className="text-xs text-slate-500 mt-1">{points.length >= 3 ? 'pares investimento × faturamento' : 'dados insuficientes'}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Confiança (R²)</p>
-          <p className={`text-2xl font-bold ${regression.r2 >= 0.7 ? 'text-emerald-600' : regression.r2 >= 0.4 ? 'text-amber-600' : 'text-red-500'}`}>
-            {regression.r2 >= 0.7 ? 'Alta' : regression.r2 >= 0.4 ? 'Média' : 'Baixa'}
+          <p className={`text-2xl font-bold ${proj.hasEnoughData ? (regression.r2 >= 0.7 ? 'text-emerald-600' : regression.r2 >= 0.4 ? 'text-amber-600' : 'text-red-500') : 'text-slate-400'}`}>
+            {proj.hasEnoughData ? (regression.r2 >= 0.7 ? 'Alta' : regression.r2 >= 0.4 ? 'Média' : 'Baixa') : '—'}
           </p>
-          <p className="text-xs text-slate-500 mt-1">R² = {regression.r2}</p>
-          <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-            <span className="font-medium text-slate-500">O que é R²?</span> Mede o quanto o investimento explica o faturamento. R² = 1 = correlação perfeita; R² = 0 = nenhuma correlação. Abaixo de 0.4 os cenários são apenas estimativas.
-          </p>
+          <p className="text-xs text-slate-500 mt-1">{proj.hasEnoughData ? `R² = ${regression.r2}` : 'sem projeção'}</p>
+          {proj.hasEnoughData && (
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              <span className="font-medium text-slate-500">O que significa?</span> Mede como o investimento em anúncios explica o faturamento gerado. Quanto mais próximo de 1, mais previsível é o resultado. Abaixo de 0.4, as projeções são apenas estimativas.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Cenários */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cenários de investimento {canal}</p>
-        </div>
-        <table className="w-full">
-          <thead className="border-b border-slate-100">
-            <tr>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Cenário</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Investimento</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Faturamento esperado</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">ROAS projetado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {forecast.map((f, i) => {
-              const labels = ['Metade', 'Atual (base)', '+50%', 'Dobro', 'Triplo'];
-              const isBase = i === 1;
-              return (
-                <tr key={i} className={isBase ? 'bg-indigo-50' : 'hover:bg-slate-50'}>
-                  <td className="px-5 py-3.5">
-                    <span className={`text-sm font-semibold ${isBase ? 'text-indigo-700' : 'text-slate-700'}`}>
-                      {labels[i]}
-                    </span>
-                    {isBase && (
-                      <span className="ml-2 text-[10px] bg-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">
-                        referência
-                      </span>
-                    )}
-                  </td>
-                  <td className={`px-5 py-3.5 text-sm text-right ${isBase ? 'font-bold text-indigo-700' : 'text-slate-600'}`}>
-                    {BRL(f.invest)}
-                  </td>
-                  <td className={`px-5 py-3.5 text-sm text-right font-bold ${isBase ? 'text-indigo-700' : 'text-slate-800'}`}>
-                    {BRL(f.receitaEsperada)}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <span className={`text-sm font-bold ${f.roas >= 3 ? 'text-emerald-600' : f.roas >= 1.5 ? 'text-amber-600' : 'text-red-500'}`}>
-                      {f.roas}x
-                    </span>
-                  </td>
+      {/* Cenários — só mostra se tem dados suficientes */}
+      {proj.hasEnoughData && (
+        <>
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cenários de investimento {canal}</p>
+            </div>
+            <table className="w-full">
+              <thead className="border-b border-slate-100">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Cenário</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Investimento</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Faturamento esperado</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">ROAS projetado</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {forecast.map((f, i) => {
+                  const labels = ['Metade', 'Atual (base)', '+50%', 'Dobro', 'Triplo'];
+                  const isBase = i === 1;
+                  return (
+                    <tr key={i} className={isBase ? 'bg-indigo-50' : 'hover:bg-slate-50'}>
+                      <td className="px-5 py-3.5">
+                        <span className={`text-sm font-semibold ${isBase ? 'text-indigo-700' : 'text-slate-700'}`}>
+                          {labels[i]}
+                        </span>
+                        {isBase && (
+                          <span className="ml-2 text-[10px] bg-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">
+                            referência
+                          </span>
+                        )}
+                      </td>
+                      <td className={`px-5 py-3.5 text-sm text-right ${isBase ? 'font-bold text-indigo-700' : 'text-slate-600'}`}>
+                        {BRL(f.invest)}
+                      </td>
+                      <td className={`px-5 py-3.5 text-sm text-right font-bold ${isBase ? 'text-indigo-700' : 'text-slate-800'}`}>
+                        {BRL(f.receitaEsperada)}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <span className={`text-sm font-bold ${f.roas >= 3 ? 'text-emerald-600' : f.roas >= 1.5 ? 'text-amber-600' : 'text-red-500'}`}>
+                          {f.roas}x
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-      <ProjectionMethodologyBox canal={canal} />
+          <ProjectionMethodologyBox canal={canal} />
+        </>
+      )}
+
+      {!proj.hasEnoughData && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500 mt-5">
+          Precisamos de ao menos 3 meses de investimento no {canal} para calcular a projeção de cenários.
+        </div>
+      )}
     </section>
   );
 }
